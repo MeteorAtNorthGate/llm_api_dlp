@@ -1,0 +1,58 @@
+"""Chat schemas — request/response models for conversation and streaming."""
+
+from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+
+
+class ChatMessage(BaseModel):
+    """A single message in the chat completion request."""
+    role: str  # "user", "assistant", "system"
+    content: str
+
+
+class ChatCompletionRequest(BaseModel):
+    """OpenAI-compatible chat completion request."""
+    model: str = "gpt-4o-mini"
+    messages: list[ChatMessage]
+    conversation_id: str | None = Field(
+        default=None, description="Existing conversation ID for continuing a chat"
+    )
+    stream: bool = True
+    temperature: float | None = 0.7
+    max_tokens: int | None = None
+
+
+class ConversationSummary(BaseModel):
+    """Summary of a conversation for listing."""
+    id: UUID
+    title: str
+    created_at: datetime
+    updated_at: datetime
+    message_count: int = 0
+
+    model_config = {"from_attributes": True}
+
+
+class MessageDetail(BaseModel):
+    """A single message returned in conversation detail."""
+    id: UUID
+    role: str
+    content: str
+    token_count: int | None = None
+    model: str | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ConversationDetail(BaseModel):
+    """Full conversation with messages."""
+    id: UUID
+    title: str
+    messages: list[MessageDetail]
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}

@@ -1,0 +1,59 @@
+/** ChatInput — text input area with send button. */
+
+import { useState, useRef, useEffect } from 'react';
+
+export default function ChatInput({ onSend, isStreaming = false }) {
+  const [input, setInput] = useState('');
+  const textareaRef = useRef(null);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
+    }
+  }, [input]);
+
+  const handleSubmit = (e) => {
+    e?.preventDefault();
+    const trimmed = input.trim();
+    if (!trimmed || isStreaming) return;
+    onSend(trimmed);
+    setInput('');
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="flex gap-2 items-end p-4 bg-base-100 border-t border-base-300">
+      <textarea
+        ref={textareaRef}
+        className="textarea textarea-bordered flex-1 min-h-[44px] max-h-[200px] resize-none"
+        placeholder={isStreaming ? 'Waiting for response...' : 'Type a message... (Enter to send, Shift+Enter for new line)'}
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        onKeyDown={handleKeyDown}
+        disabled={isStreaming}
+        rows={1}
+      />
+      <button
+        className="btn btn-primary btn-square"
+        type="submit"
+        disabled={!input.trim() || isStreaming}
+      >
+        {isStreaming ? (
+          <span className="loading loading-spinner loading-sm" />
+        ) : (
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13" />
+            <polygon points="22 2 15 22 11 13 2 9 22 2" />
+          </svg>
+        )}
+      </button>
+    </form>
+  );
+}

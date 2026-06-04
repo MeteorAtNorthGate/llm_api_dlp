@@ -1,0 +1,95 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: llm-dlp-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: llm_dlp
+      POSTGRES_USER: llmuser
+      POSTGRES_PASSWORD: llmpass
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U llmuser -d llm_dlp"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: llm-dlp-keycloak
+    restart: unless-stopped
+    command:
+      - start-dev
+      - --import-realm
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: llmuser
+      KC_DB_PASSWORD: llmpass
+      KC_HOSTNAME: localhost
+      KC_HTTP_PORT: 8080
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    container_name: llm-dlp-litellm
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://llmuser:llmpass@postgres:5432/litellm
+      LITELLM_MASTER_KEY: sk-master-key-change-me
+      LITELLM_SALT_KEY: salt-key-change-me
+      STORE_MODEL_IN_DB: "true"
+      SERVER_ROOT_PATH: ""
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./litellm/config.yaml:/app/config.yaml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command:
+      - --config
+      - /app/config.yaml
+
+  api-server:
+    build:
+      context: ../apps/api-server
+      dockerfile: Dockerfile
+    container_name: llm-dlp-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://llmuser:llmpass@postgres:5432/llm_dlp
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: llm-dlp
+      KEYCLOAK_CLIENT_ID: llm-dlp-web
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-change-me}
+      LITELLM_BASE_URL: http://litellm:4000
+      LITELLM_MASTER_KEY: sk-master-key-change-me
+      APP_SECRET_KEY: ${APP_SECRET_KEY:-dev-secret-key-change-me}
+      APP_LOG_LEVEL: DEBUG
+      CORS_ORIGINS: http://localhost:5173
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+      litellm:
+        condition: service_started
+
+volumes:
+  pgdata:

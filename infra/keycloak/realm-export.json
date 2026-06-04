@@ -1,0 +1,90 @@
+{
+  "id": "llm-dlp",
+  "realm": "llm-dlp",
+  "displayName": "LLM Platform",
+  "enabled": true,
+  "loginWithEmailAllowed": false,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "registrationAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 3600,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "clients": [
+    {
+      "clientId": "llm-dlp-web",
+      "name": "LLM Platform Web Client",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:5173/*",
+        "http://localhost:8000/auth/callback"
+      ],
+      "webOrigins": ["http://localhost:5173"],
+      "postLogoutRedirectUris": ["http://localhost:5173"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "access.token.lifespan": "3600",
+        "id.token.lifespan": "3600"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "demo",
+      "email": "demo@example.com",
+      "firstName": "Demo",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo123",
+          "temporary": false
+        }
+      ],
+      "groups": ["employees"]
+    },
+    {
+      "username": "developer",
+      "email": "dev@example.com",
+      "firstName": "Dev",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dev123",
+          "temporary": false
+        }
+      ],
+      "groups": ["developers"]
+    }
+  ],
+  "groups": [
+    {
+      "name": "employees",
+      "path": "/employees"
+    },
+    {
+      "name": "developers",
+      "path": "/developers"
+    }
+  ],
+  "defaultRoles": ["default-roles-llm-dlp"],
+  "requiredCredentials": ["password"],
+  "userManagedAccessAllowed": false,
+  "internationalizationEnabled": true,
+  "supportedLocales": ["en", "zh-CN"],
+  "defaultLocale": "en"
+}

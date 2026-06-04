@@ -92,3 +92,4 @@ desktop/inspect_edge_agent/riber/riber_csv_agent_config.json
 .codex
 /Plans/
 .claude/settings.local.json
+.claude/.history.md

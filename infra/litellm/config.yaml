@@ -1,0 +1,39 @@
+model_list:
+  - model_name: gpt-4o
+    litellm_params:
+      model: openai/gpt-4o
+      api_key: ${OPENAI_API_KEY}
+      rpm: 500
+      tpm: 100000
+
+  - model_name: gpt-4o-mini
+    litellm_params:
+      model: openai/gpt-4o-mini
+      api_key: ${OPENAI_API_KEY}
+      rpm: 1000
+      tpm: 200000
+
+  - model_name: qwen-max
+    litellm_params:
+      model: openai/qwen-max
+      api_base: https://dashscope-intl.aliyuncs.com/compatible-mode/v1
+      api_key: ${QWEN_API_KEY}
+      rpm: 300
+      tpm: 80000
+
+general_settings:
+  master_key: sk-master-key-change-me
+  database_url: postgresql://llmuser:llmpass@postgres:5432/litellm
+
+litellm_settings:
+  callbacks:
+    - custom_logger
+  drop_params: true
+  set_verbose: false
+
+router_settings:
+  routing_strategy: "usage-based-routing-v2"
+  enable_pre_call_checks: true
+  allowed_fails: 3
+  num_retries: 2
+  cooldown_time: 30
