@@ -1,0 +1,51 @@
+llm_api_dlp/
+├── apps/                        # 核心业务代码区
+│   ├── web-client/              # 前端：Vite + React + Tailwind
+│   │   ├── public/
+│   │   ├── src/
+│   │   │   ├── assets/
+│   │   │   ├── components/      # 通用 UI 组件 (Button, Modal 等)
+│   │   │   ├── hooks/           # 自定义 Hooks (如 useChatStream, useAuth)
+│   │   │   ├── pages/           # 页面路由视图
+│   │   │   │   ├── Chat/        # 对话聊天主界面
+│   │   │   │   └── Admin/       # 二级 API Key 管理与查询面板
+│   │   │   ├── services/        # API 请求层 (Axios/Fetch 封装)
+│   │   │   ├── store/           # 全局状态管理 (Zustand 或 Redux)
+│   │   │   ├── utils/           # 工具函数 (格式化时间、解析 Markdown 等)
+│   │   │   ├── App.jsx
+│   │   │   └── main.jsx
+│   │   ├── index.html
+│   │   ├── package.json
+│   │   ├── tailwind.config.js
+│   │   └── vite.config.js
+│   │
+│   ├── api-server/              # 后端：CPython (推荐 FastAPI)
+│   │   ├── app/
+│   │   │   ├── api/             # 路由层 (Endpoints)
+│   │   │   │   ├── chat.py      # 处理历史记录、转发对话流
+│   │   │   │   ├── keys.py      # 调用 LiteLLM API 发放/查询 Key
+│   │   │   │   └── auth.py      # OIDC/LDAP 登录回调与鉴权
+│   │   │   ├── core/            # 核心配置 (CORS, 环境变量, 安全中间件)
+│   │   │   ├── schemas/         # Pydantic 数据验证模型 (Req/Res 结构)
+│   │   │   ├── services/        # 核心业务逻辑
+│   │   │   ├── db/              # 数据库操作 (如需存聊天记录：SQLAlchemy)
+│   │   │   └── main.py          # FastAPI 入口文件
+│   │   ├── requirements.txt
+│   │   └── .env.example
+│   │
+│   └── dlp-plugin/              # 你的脱敏审核模块 (挂载给 LiteLLM)
+│       ├── __init__.py
+│       ├── custom_logger.py     # LiteLLM 钩子 (pre_api_call / post_api_call)
+│       ├── masking_rules.py     # 正则或匹配规则库
+│       └── requirements.txt
+│
+├── infra/                       # 基础设施部署与第三方服务配置区
+│   ├── docker-compose.yml       # 一键拉起 Postgres, Keycloak, LiteLLM
+│   ├── litellm/
+│   │   └── config.yaml          # LiteLLM 的模型路由表、预算规则
+│   └── keycloak/
+│       └── realm-export.json    # 域控映射配置备份 (避免换机器后重新配)
+│
+├── .gitignore
+├── README.md
+└── Makefile                     # 快捷命令 (如 `make dev`, `make build`)

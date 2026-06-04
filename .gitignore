@@ -1,0 +1,94 @@
+# venv and IDE
+.venv/
+.idea/
+local_packages/
+.continue/
+.aider.conf.yml
+.aider*
+
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*:Zone.Identifier
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# cache
+__pycache__/
+
+#cprofiles
+*.prof
+
+# build and packages
+build/
+dist/
+
+node_modules/
+dist-ssr/
+frontend/*.local
+
+auto_mbe_images.tar
+auto_mbe_images.tar.gz
+auto_mbe_frontend.tar.gz
+auto_mbe_backend.tar.gz
+
+# local_files
+sketch.py
+
+# tesseract packages
+tesseract-ocr-w64-setup-5.5.0.20241111.exe
+eng.traineddata
+osd.traineddata
+
+# edge_agent(desktop/) files
+thresholds.json
+contacts.json
+EpiTrendData/
+EpiTrendConvert/
+
+# recipes(demos could be added after renamed, like xxx_parsed_example.json, etc)
+*_parsed.json
+*_regen.cmd
+*_regen.rcp
+*_regen.xml
+
+*.ico
+
+# (local)server_data
+/backend/saved_recipes/
+/backend/growth_rate.json
+
+auto_check_latest.json
+!backend/tests/fixtures/auto_check_latest.json
+backend/tests/manual/output/
+
+# keys
+.env
+.env.local
+
+# logs
+logs/
+frontend/logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# generated Riber dumps
+desktop/inspect_edge_agent/riber/*.generated.json
+desktop/inspect_edge_agent/riber/*.generated/
+desktop/inspect_edge_agent/riber/riber_csv_agent_config.json
+
+#sketch
+草稿纸.*
+
+#Agents
+.codex
+/Plans/
+.claude/settings.local.json
