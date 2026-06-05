@@ -25,3 +25,4 @@ class AuthCallbackRequest(BaseModel):
     """Request body for the auth callback — Keycloak redirects with code."""
     code: str
     redirect_uri: str
+    code_verifier: str = ""  # PKCE code verifier for public clients

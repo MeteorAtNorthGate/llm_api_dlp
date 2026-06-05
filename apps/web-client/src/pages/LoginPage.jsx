@@ -13,9 +13,14 @@ export default function LoginPage() {
 
   useEffect(() => {
     const code = searchParams.get('code');
+    const state = searchParams.get('session_state');
 
     if (code) {
-      login(code, `${window.location.origin}/login`).catch((err) => {
+      const redirectUri = `${window.location.origin}/auth/callback`;
+      const codeVerifier = sessionStorage.getItem('pkce_code_verifier') || '';
+      sessionStorage.removeItem('pkce_code_verifier');
+
+      login(code, redirectUri, codeVerifier).catch((err) => {
         setError('Login failed. Please try again.');
         console.error('Login error:', err);
       });
@@ -23,7 +28,7 @@ export default function LoginPage() {
       // No code — redirect to Keycloak
       redirectToLogin();
     }
-  }, [searchParams, isAuthenticated, isLoading, login, redirectToLogin, navigate]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (isAuthenticated) {

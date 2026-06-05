@@ -11,14 +11,14 @@
 #   Scheme: http  →  Forward Hostname: llm-dlp-web  →  Forward Port: 80
 #
 # ⚠️ 首次部署后务必更新 Keycloak 客户端重定向 URI:
-#   当前 realm-export.json 里只包含 localhost，云端需要添加:
+#   当前 llm-dlp-realm.json 里只包含 localhost，云端需要添加:
 #     redirectUris:        https://<your-domain>/*, https://<your-domain>/auth/callback
 #     webOrigins:          https://<your-domain>
 #     postLogoutRedirectUris: https://<your-domain>
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     container_name: llm-dlp-postgres
     restart: unless-stopped
     environment:
@@ -34,7 +34,7 @@ services:
       retries: 5
 
   keycloak:
-    image: quay.io/keycloak/keycloak:23.0
+    image: quay.io/keycloak/keycloak:26.6.3
     container_name: llm-dlp-keycloak
     restart: unless-stopped
     command:
@@ -47,16 +47,16 @@ services:
       KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-llmpass}
       KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-localhost}
       KC_HTTP_PORT: 8080
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
     volumes:
-      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+      - ./keycloak/llm-dlp-realm.json:/opt/keycloak/data/import/llm-dlp-realm.json:ro
     depends_on:
       postgres:
         condition: service_healthy
 
   litellm:
-    image: ghcr.io/berriai/litellm:main-stable
+    image: ghcr.io/berriai/litellm:v1.87.1
     container_name: llm-dlp-litellm
     restart: unless-stopped
     environment:

@@ -32,15 +32,20 @@ async def auth_callback(body: AuthCallbackRequest):
     )
 
     async with httpx.AsyncClient() as client:
+        form_data = {
+            "grant_type": "authorization_code",
+            "code": body.code,
+            "redirect_uri": body.redirect_uri,
+            "client_id": settings.KEYCLOAK_CLIENT_ID,
+            "client_secret": settings.KEYCLOAK_CLIENT_SECRET,
+        }
+        # Include PKCE code_verifier for public clients
+        if body.code_verifier:
+            form_data["code_verifier"] = body.code_verifier
+
         resp = await client.post(
             token_url,
-            data={
-                "grant_type": "authorization_code",
-                "code": body.code,
-                "redirect_uri": body.redirect_uri,
-                "client_id": settings.KEYCLOAK_CLIENT_ID,
-                "client_secret": settings.KEYCLOAK_CLIENT_SECRET,
-            },
+            data=form_data,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
 

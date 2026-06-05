@@ -8,8 +8,8 @@ export const useAuthStore = create((set, get) => ({
   isAuthenticated: false,
   isLoading: true,
 
-  login: async (code, redirectUri) => {
-    const data = await authApi.callback(code, redirectUri);
+  login: async (code, redirectUri, codeVerifier) => {
+    const data = await authApi.callback(code, redirectUri, codeVerifier);
     localStorage.setItem('access_token', data.access_token);
     if (data.refresh_token) {
       localStorage.setItem('refresh_token', data.refresh_token);

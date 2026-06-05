@@ -23,9 +23,9 @@ Browser → React (Vite) → FastAPI → LiteLLM Proxy (DLP) → External LLMs
 
 | Service | Image | Default Port | Notes |
 |---|---|---|---|
-| PostgreSQL | `postgres:16-alpine` | 5432 | Requires databases `llm_dlp` and `keycloak` |
-| Keycloak | `quay.io/keycloak/keycloak:23.0` | 8080 | Admin: `admin/admin`. Realm auto-imported on first start. |
-| LiteLLM | `ghcr.io/berriai/litellm:main-stable` | 4000 | LLM gateway with DLP callbacks |
+| PostgreSQL | `postgres:17-alpine` | 5432 | Requires databases `llm_dlp` and `keycloak` |
+| Keycloak | `quay.io/keycloak/keycloak:26.6.3` | 8080 | Admin: `admin/admin`. Realm auto-imported on first start. |
+| LiteLLM | `ghcr.io/berriai/litellm:v1.87.1` | 4000 | LLM gateway with DLP callbacks |
 
 ### Cloud-only services (already running on server)
 
@@ -45,12 +45,9 @@ cd apps/api-server && python3 -m venv .venv && .venv/bin/pip install -r requirem
 
 # 2. Install web deps
 cd apps/web-client && pnpm install && cd ../..
-
-# 3. Run DB migrations
-make db-migrate
 ```
 
-### Start developing (three terminals)
+### Start developing (need three new terminals for infra)
 
 ```bash
 # Terminal 1 — Infrastructure (Postgres, Keycloak, LiteLLM)
@@ -61,6 +58,9 @@ make dev-api
 
 # Terminal 3 — Web client (HMR, port 5173)
 make dev-web
+
+# Terminal 1 or 4 — Run DB migrations, after that, for common use
+make db-migrate
 ```
 
 Then open **http://localhost:5173** in browser. Login redirects to Keycloak at `localhost:8080`.
@@ -77,7 +77,7 @@ Then open **http://localhost:5173** in browser. Login redirects to Keycloak at `
 
 ### One-time Keycloak setup after first login
 
-Keycloak realm is auto-imported from `infra/keycloak/realm-export.json` on first start. Default config includes:
+Keycloak realm is auto-imported from `infra/keycloak/llm-dlp-realm.json` on first start. Default config includes:
 
 - **Realm:** `llm-dlp`
 - **Client:** `llm-dlp-web` (public OIDC, redirects to `http://localhost:5173/*`)

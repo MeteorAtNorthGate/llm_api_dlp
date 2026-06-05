@@ -26,8 +26,9 @@ general_settings:
   database_url: postgresql://llmuser:llmpass@postgres:5432/litellm
 
 litellm_settings:
-  callbacks:
-    - custom_logger
+  # callbacks are disabled until DLP plugin is mounted into container
+  # callbacks:
+  #   - custom_logger
   drop_params: true
   set_verbose: false
 

@@ -29,7 +29,7 @@
         "http://localhost:8000/auth/callback"
       ],
       "webOrigins": ["http://localhost:5173"],
-      "postLogoutRedirectUris": ["http://localhost:5173"],
+      "adminUrl": "http://localhost:5173",
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "access.token.lifespan": "3600",

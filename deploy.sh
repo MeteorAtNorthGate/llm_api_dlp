@@ -27,7 +27,7 @@ scp $TAR_NAME $COMPOSE_CLOUD $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/
 echo "📁 [5/6] 首次部署时上传配置文件 (如已上传可跳过)..."
 ssh $REMOTE_USER@$REMOTE_HOST "mkdir -p $REMOTE_DIR/infra/keycloak $REMOTE_DIR/infra/litellm"
 scp infra/.env.cloud $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/infra/ 2>/dev/null || echo "⚠️  .env.cloud 不存在，请先创建"
-scp -r infra/keycloak/realm-export.json $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/infra/keycloak/ 2>/dev/null || true
+scp -r infra/keycloak/llm-dlp-realm.json $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/infra/keycloak/ 2>/dev/null || true
 scp -r infra/litellm/config.yaml $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/infra/litellm/ 2>/dev/null || true
 
 echo "🚀 [6/6] 在服务器上部署更新..."

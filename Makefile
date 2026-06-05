@@ -6,7 +6,7 @@ help:           ## Show this help
 dev-infra:      ## Start Postgres, Keycloak, LiteLLM (Docker)
 	DOCKER_BUILDKIT=0 docker compose -f infra/docker-compose.yml up -d postgres
 	@sleep 3
-	@docker exec llm-dlp-postgres psql -U llmuser -c "CREATE DATABASE keycloak;" 2>/dev/null || echo "  keycloak DB already exists"
+	@docker exec llm-dlp-postgres psql -U llmuser -d postgres -c "CREATE DATABASE keycloak;" 2>/dev/null || echo "  keycloak DB already exists"
 	DOCKER_BUILDKIT=0 docker compose -f infra/docker-compose.yml up -d keycloak litellm
 
 dev-api:        ## Start FastAPI dev server with hot-reload (port 8000)

@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     container_name: llm-dlp-postgres
     restart: unless-stopped
     environment:
@@ -18,7 +18,7 @@ services:
       retries: 5
 
   keycloak:
-    image: quay.io/keycloak/keycloak:23.0
+    image: quay.io/keycloak/keycloak:26.6.3
     container_name: llm-dlp-keycloak
     restart: unless-stopped
     command:
@@ -31,18 +31,18 @@ services:
       KC_DB_PASSWORD: llmpass
       KC_HOSTNAME: localhost
       KC_HTTP_PORT: 8080
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
     ports:
       - "8080:8080"
     volumes:
-      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+      - ./keycloak/llm-dlp-realm.json:/opt/keycloak/data/import/llm-dlp-realm.json:ro
     depends_on:
       postgres:
         condition: service_healthy
 
   litellm:
-    image: ghcr.io/berriai/litellm:main-stable
+    image: ghcr.io/berriai/litellm:v1.87.1
     container_name: llm-dlp-litellm
     restart: unless-stopped
     environment:
