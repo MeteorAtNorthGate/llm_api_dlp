@@ -7,8 +7,22 @@ import ChatInput from '../../components/chat/ChatInput';
 import { useChatStore } from '../../store/chatStore';
 
 export default function ChatPage() {
-  const { messages, isStreaming, streamContent, sendMessage } = useChatStore();
+  const {
+    messages,
+    isStreaming,
+    streamContent,
+    availableModels,
+    selectedModel,
+    sendMessage,
+    loadModels,
+    setSelectedModel,
+  } = useChatStore();
   const messagesEndRef = useRef(null);
+
+  // Load models on mount
+  useEffect(() => {
+    loadModels();
+  }, [loadModels]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -64,7 +78,13 @@ export default function ChatPage() {
         </div>
 
         {/* Input area */}
-        <ChatInput onSend={handleSend} isStreaming={isStreaming} />
+        <ChatInput
+          onSend={handleSend}
+          isStreaming={isStreaming}
+          models={availableModels}
+          selectedModel={selectedModel}
+          onModelChange={setSelectedModel}
+        />
       </div>
     </Layout>
   );

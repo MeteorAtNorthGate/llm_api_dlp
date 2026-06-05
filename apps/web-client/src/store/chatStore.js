@@ -9,6 +9,26 @@ export const useChatStore = create((set, get) => ({
   messages: [],
   isStreaming: false,
   streamContent: '',
+  availableModels: [],
+  selectedModel: 'gpt-4o-mini',
+
+  // Load available models from backend
+  loadModels: async () => {
+    try {
+      const data = await chatApi.listModels();
+      const models = data.models || [];
+      set({ availableModels: models });
+      // Auto-select first model if none selected or current selection not available
+      const { selectedModel } = get();
+      if (models.length > 0 && !models.find((m) => m.name === selectedModel)) {
+        set({ selectedModel: models[0].name });
+      }
+    } catch (err) {
+      console.error('Failed to load models', err);
+    }
+  },
+
+  setSelectedModel: (model) => set({ selectedModel: model }),
 
   // Load conversation list
   loadConversations: async () => {
@@ -43,8 +63,9 @@ export const useChatStore = create((set, get) => ({
   },
 
   // Send a message and stream the response
-  sendMessage: async (content, model = 'gpt-4o-mini') => {
-    const { activeConversationId, messages } = get();
+  sendMessage: async (content) => {
+    const { activeConversationId, messages, selectedModel } = get();
+    const model = selectedModel || 'gpt-4o-mini';
 
     // Add user message immediately
     const userMsg = { role: 'user', content, id: Date.now().toString() };

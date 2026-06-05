@@ -46,6 +46,9 @@ export const chatApi = {
       timeout: 300000,
     }),
 
+  listModels: () =>
+    api.get('chat/models').json(),
+
   listConversations: () =>
     api.get('chat/conversations').json(),
 

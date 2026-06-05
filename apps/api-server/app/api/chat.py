@@ -26,6 +26,40 @@ from app.schemas.chat import (
 router = APIRouter()
 
 
+@router.get("/models")
+async def list_available_models(
+    user_claims: dict = Depends(get_current_user),
+):
+    """List models available for chat — any authenticated user can call."""
+    import httpx
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.get(
+            f"{settings.LITELLM_BASE_URL}/model/info",
+            headers={"Authorization": f"Bearer {settings.LITELLM_MASTER_KEY}"},
+        )
+        if resp.status_code != 200:
+            return {"models": []}
+
+        data = resp.json()
+        entries = data.get("data", [])
+
+    models = []
+    for entry in entries:
+        model_name = entry.get("model_name", "unknown")
+        model_info = entry.get("model_info", {}) or {}
+        litellm_params = entry.get("litellm_params", {}) or {}
+
+        models.append({
+            "id": model_info.get("id", model_name),
+            "name": model_name,
+            "provider": model_info.get("litellm_provider", ""),
+            "description": model_info.get("description", ""),
+        })
+
+    return {"models": models}
+
+
 async def _get_or_create_user(
     session: AsyncSession, user_claims: dict
 ) -> User:
