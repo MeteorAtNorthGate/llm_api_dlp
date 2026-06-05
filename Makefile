@@ -1,16 +1,7 @@
-.PHONY: help dev dev-infra dev-api dev-web build test-api test-web lint clean db-migrate db-rollback build-cloud push-cloud
+.PHONY: help dev-infra dev-api dev-web build test-api test-web lint clean db-migrate db-rollback build-cloud push-cloud
 
 help:           ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
-
-dev: dev-infra             ## Start all dev services (hot-reload)
-	@echo "🚀 API (port 8000) + Web (port 5173)"
-	cd apps/api-server && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 & \
-	cd apps/web-client && pnpm dev & \
-	echo "  API:  http://localhost:8000/docs" && \
-	echo "  Web:  http://localhost:5173" && \
-	echo "Ctrl+C to stop all" && \
-	wait
 
 dev-infra:      ## Start Postgres, Keycloak, LiteLLM (Docker)
 	DOCKER_BUILDKIT=0 docker compose -f infra/docker-compose.yml up -d postgres
@@ -18,10 +9,10 @@ dev-infra:      ## Start Postgres, Keycloak, LiteLLM (Docker)
 	@docker exec llm-dlp-postgres psql -U llmuser -c "CREATE DATABASE keycloak;" 2>/dev/null || echo "  keycloak DB already exists"
 	DOCKER_BUILDKIT=0 docker compose -f infra/docker-compose.yml up -d keycloak litellm
 
-dev-api:        ## Start FastAPI dev server with hot-reload (standalone)
-	cd apps/api-server && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+dev-api:        ## Start FastAPI dev server with hot-reload (port 8000)
+	cd apps/api-server && .venv/bin/uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-dev-web:        ## Start Vite dev server with HMR (standalone)
+dev-web:        ## Start Vite dev server with HMR (port 5173)
 	cd apps/web-client && pnpm dev
 
 build:          ## Build all Docker images (local)
@@ -52,13 +43,13 @@ push-cloud: build-cloud  ## Build + upload to cloud server (set CLOUD_HOST env v
 # --- Testing & quality ---
 
 test-api:       ## Run API tests
-	cd apps/api-server && python -m pytest tests/ -v
+	cd apps/api-server && .venv/bin/python -m pytest tests/ -v
 
 test-web:       ## Run web tests
 	cd apps/web-client && pnpm test
 
 lint:           ## Lint all code
-	cd apps/api-server && ruff check app/
+	cd apps/api-server && .venv/bin/ruff check app/
 	cd apps/web-client && pnpm lint
 
 # --- Maintenance ---
@@ -69,7 +60,7 @@ clean:          ## Clean up containers, volumes, temp files
 	rm -f infra/images.tar.gz
 
 db-migrate:     ## Run Alembic migrations
-	cd apps/api-server && alembic upgrade head
+	cd apps/api-server && .venv/bin/alembic upgrade head
 
 db-rollback:    ## Rollback Alembic migration by one step
-	cd apps/api-server && alembic downgrade -1
+	cd apps/api-server && .venv/bin/alembic downgrade -1

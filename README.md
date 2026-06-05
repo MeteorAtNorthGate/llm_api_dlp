@@ -35,22 +35,32 @@ Browser → React (Vite) → FastAPI → LiteLLM Proxy (DLP) → External LLMs
 
 ## Quick Start
 
+All commands run from project root (`llm_api_dlp/`). Open a separate terminal for each `make dev-*` target — IDE sidebar (VSCode/JetBrains) handles this well.
+
+### First-time setup
+
 ```bash
-# 1. Start infrastructure containers
+# 1. Create Python venv & install API deps
+cd apps/api-server && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt && cd ../..
+
+# 2. Install web deps
+cd apps/web-client && pnpm install && cd ../..
+
+# 3. Run DB migrations
+make db-migrate
+```
+
+### Start developing (three terminals)
+
+```bash
+# Terminal 1 — Infrastructure (Postgres, Keycloak, LiteLLM)
 make dev-infra
 
-# 2. Create Keycloak database (first time only)
-docker exec llm-dlp-postgres psql -U llmuser -c "CREATE DATABASE keycloak;" 2>/dev/null || echo "Already exists"
+# Terminal 2 — API server (hot-reload, port 8000)
+make dev-api
 
-# 3. Install app dependencies
-cd apps/api-server && python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-cd apps/web-client && pnpm install
-
-# 4. Run DB migrations
-make db-migrate
-
-# 5. Start all dev servers (API + Web, hot-reload)
-make dev
+# Terminal 3 — Web client (HMR, port 5173)
+make dev-web
 ```
 
 Then open **http://localhost:5173** in browser. Login redirects to Keycloak at `localhost:8080`.
@@ -121,10 +131,9 @@ llm_api_dlp/
 
 | Command | Description |
 |---|---|
-| `make dev` | Start infra + API + Web (hot-reload, all-in-one) |
 | `make dev-infra` | Start Postgres, Keycloak, LiteLLM containers |
-| `make dev-api` | Start FastAPI dev server only (port 8000) |
-| `make dev-web` | Start Vite dev server only (port 5173) |
+| `make dev-api` | Start FastAPI dev server (hot-reload, port 8000) |
+| `make dev-web` | Start Vite dev server (HMR, port 5173) |
 | `make build` | Build all Docker images locally |
 | `make up` / `make down` | Start/stop all local containers |
 | `make build-cloud` | Build images + export `infra/images.tar.gz` |
