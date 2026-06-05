@@ -73,6 +73,10 @@ infra/.env.cloud
 
 # cloud deploy artifacts
 infra/images.tar.gz
+llm_dlp_images.tar.gz
+llm_dlp_api.tar.gz
+llm_dlp_web.tar.gz
+apps/web-client/.env.local
 
 # logs
 logs/
