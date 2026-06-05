@@ -9,9 +9,24 @@ import { adminApi } from '../../services/api';
 
 const PROVIDERS = [
   { value: 'openai', label: 'OpenAI', defaultBase: 'https://api.openai.com/v1' },
-  { value: 'qwen', label: 'Qwen (Alibaba)', defaultBase: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1' },
-  { value: 'anthropic', label: 'Anthropic', defaultBase: '' },
   { value: 'azure', label: 'Azure OpenAI', defaultBase: '' },
+  { value: 'anthropic', label: 'Anthropic (Claude)', defaultBase: '' },
+  { value: 'qwen', label: 'Qwen / Alibaba', defaultBase: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1' },
+  { value: 'deepseek', label: 'DeepSeek', defaultBase: 'https://api.deepseek.com/v1' },
+  { value: 'google', label: 'Google AI (Gemini)', defaultBase: '' },
+  { value: 'vertex_ai', label: 'Google Vertex AI', defaultBase: '' },
+  { value: 'mistral', label: 'Mistral AI', defaultBase: 'https://api.mistral.ai/v1' },
+  { value: 'groq', label: 'Groq', defaultBase: 'https://api.groq.com/openai/v1' },
+  { value: 'cohere', label: 'Cohere', defaultBase: 'https://api.cohere.com/v1' },
+  { value: 'bedrock', label: 'AWS Bedrock', defaultBase: '' },
+  { value: 'together_ai', label: 'Together AI', defaultBase: 'https://api.together.xyz/v1' },
+  { value: 'perplexity', label: 'Perplexity AI', defaultBase: 'https://api.perplexity.ai' },
+  { value: 'xai', label: 'xAI (Grok)', defaultBase: 'https://api.x.ai/v1' },
+  { value: 'ollama', label: 'Ollama (Local)', defaultBase: 'http://localhost:11434/v1' },
+  { value: 'openrouter', label: 'OpenRouter', defaultBase: 'https://openrouter.ai/api/v1' },
+  { value: 'huggingface', label: 'HuggingFace', defaultBase: '' },
+  { value: 'replicate', label: 'Replicate', defaultBase: '' },
+  { value: 'custom', label: 'Custom (full model path)', defaultBase: '' },
 ];
 
 const EMPTY_FORM = {
@@ -276,15 +291,31 @@ export default function SystemAdminPage() {
 
             <div className="form-control">
               <label className="label"><span className="label-text font-medium">Model ID *</span></label>
-              <input
-                type="text" className="input input-bordered"
-                placeholder="e.g., gpt-4o, qwen-max, claude-sonnet-4-6"
-                value={addForm.model_id}
-                onChange={(e) => setAddForm((f) => ({ ...f, model_id: e.target.value }))}
-              />
-              <label className="label"><span className="label-text-alt text-base-content/50">
-                Provider model identifier. LiteLLM will map this to <code>{addForm.provider}/{addForm.model_id || 'model-id'}</code>
-              </span></label>
+              {addForm.provider === 'custom' ? (
+                <>
+                  <input
+                    type="text" className="input input-bordered font-mono text-sm"
+                    placeholder="e.g., openai/gpt-4o, anthropic/claude-sonnet-4-6"
+                    value={addForm.model_id}
+                    onChange={(e) => setAddForm((f) => ({ ...f, model_id: e.target.value }))}
+                  />
+                  <label className="label"><span className="label-text-alt text-base-content/50">
+                    Enter the full LiteLLM model path (provider/model-name). See <a href="https://docs.litellm.ai/docs/providers" target="_blank" className="link">LiteLLM docs</a> for all supported providers.
+                  </span></label>
+                </>
+              ) : (
+                <>
+                  <input
+                    type="text" className="input input-bordered"
+                    placeholder="e.g., gpt-4o, qwen-max, claude-sonnet-4-6"
+                    value={addForm.model_id}
+                    onChange={(e) => setAddForm((f) => ({ ...f, model_id: e.target.value }))}
+                  />
+                  <label className="label"><span className="label-text-alt text-base-content/50">
+                    Provider model name. LiteLLM will call this as <code className="font-bold">{addForm.provider}/{addForm.model_id || 'model-id'}</code>
+                  </span></label>
+                </>
+              )}
             </div>
 
             <div className="form-control">

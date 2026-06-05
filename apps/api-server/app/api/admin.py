@@ -17,14 +17,38 @@ router = APIRouter()
 
 PROVIDER_PREFIX: dict[str, str] = {
     "openai": "openai",
-    "qwen": "openai",          # Qwen uses OpenAI-compatible API
-    "anthropic": "anthropic",
     "azure": "azure",
+    "anthropic": "anthropic",
+    "qwen": "openai",            # Qwen uses OpenAI-compatible API
+    "deepseek": "deepseek",
+    "google": "gemini",
+    "vertex_ai": "vertex_ai",
+    "mistral": "mistral",
+    "groq": "groq",
+    "cohere": "cohere",
+    "bedrock": "bedrock",
+    "together_ai": "together_ai",
+    "perplexity": "perplexity",
+    "xai": "xai",
+    "ollama": "ollama",
+    "openrouter": "openrouter",
+    "huggingface": "huggingface",
+    "replicate": "replicate",
+    "custom": "",                # User types full model path (e.g., "openai/gpt-4o")
 }
 
 PROVIDER_DEFAULT_BASE: dict[str, str] = {
-    "qwen": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
     "openai": "https://api.openai.com/v1",
+    "qwen": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+    "deepseek": "https://api.deepseek.com/v1",
+    "mistral": "https://api.mistral.ai/v1",
+    "groq": "https://api.groq.com/openai/v1",
+    "cohere": "https://api.cohere.com/v1",
+    "together_ai": "https://api.together.xyz/v1",
+    "perplexity": "https://api.perplexity.ai",
+    "xai": "https://api.x.ai/v1",
+    "ollama": "http://localhost:11434/v1",
+    "openrouter": "https://openrouter.ai/api/v1",
 }
 
 # ── Auth helper ──────────────────────────────────────────────────────
@@ -90,9 +114,17 @@ class ModelListResponse(BaseModel):
 
 
 def _build_litellm_model(provider: str, model_id: str) -> str:
-    """Build the litellm model identifier, e.g. 'openai/gpt-4o'."""
+    """Build the litellm model identifier, e.g. 'openai/gpt-4o'.
+
+    For 'custom' provider, model_id is used directly (user types full path).
+    """
+    if provider == "custom":
+        # User provides the full path, e.g. "openai/gpt-4o"
+        return model_id
     prefix = PROVIDER_PREFIX.get(provider, provider)
-    return f"{prefix}/{model_id}"
+    if prefix:
+        return f"{prefix}/{model_id}"
+    return model_id
 
 
 def _resolve_api_base(provider: str, api_base: str | None) -> str | None:
