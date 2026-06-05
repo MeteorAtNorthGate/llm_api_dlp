@@ -66,6 +66,7 @@ services:
     build:
       context: ../apps/api-server
       dockerfile: Dockerfile
+    image: llm-dlp-api:latest
     container_name: llm-dlp-api
     restart: unless-stopped
     environment:
@@ -78,7 +79,7 @@ services:
       LITELLM_MASTER_KEY: sk-master-key-change-me
       APP_SECRET_KEY: ${APP_SECRET_KEY:-dev-secret-key-change-me}
       APP_LOG_LEVEL: DEBUG
-      CORS_ORIGINS: http://localhost:5173
+      CORS_ORIGINS: http://localhost:5173,http://localhost:3000
     ports:
       - "8000:8000"
     depends_on:
@@ -88,6 +89,16 @@ services:
         condition: service_started
       litellm:
         condition: service_started
+
+  web-client:
+    build:
+      context: ../apps/web-client
+      dockerfile: Dockerfile
+    image: llm-dlp-web:latest
+    container_name: llm-dlp-web
+    restart: unless-stopped
+    depends_on:
+      - api-server
 
 volumes:
   pgdata:

@@ -1,0 +1,117 @@
+# 云端部署 compose —— 配合 jc21/nginx-proxy-manager 使用
+# 部署步骤:
+#   1. 本地构建:  make build-cloud
+#   2. 上传:      scp infra/images.tar.gz infra/docker-compose.cloud.yml infra/.env.cloud user@host:~/llm-dlp/
+#   3. 上传配置:  scp -r infra/keycloak/ infra/litellm/ user@host:~/llm-dlp/infra/
+#   4. 云端加载:  ssh user@host "cd ~/llm-dlp && docker load -i infra/images.tar.gz"
+#   5. 云端启动:  ssh user@host "cd ~/llm-dlp && docker compose -f infra/docker-compose.cloud.yml --env-file infra/.env.cloud up -d"
+#   6. Keycloak:  登录 admin 控制台，将云端域名加入 llm-dlp-web 客户端的 redirectUris / webOrigins
+#
+# NPM 反代配置:
+#   Scheme: http  →  Forward Hostname: llm-dlp-web  →  Forward Port: 80
+#
+# ⚠️ 首次部署后务必更新 Keycloak 客户端重定向 URI:
+#   当前 realm-export.json 里只包含 localhost，云端需要添加:
+#     redirectUris:        https://<your-domain>/*, https://<your-domain>/auth/callback
+#     webOrigins:          https://<your-domain>
+#     postLogoutRedirectUris: https://<your-domain>
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: llm-dlp-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: llm_dlp
+      POSTGRES_USER: llmuser
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-llmpass}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U llmuser -d llm_dlp"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: llm-dlp-keycloak
+    restart: unless-stopped
+    command:
+      - start-dev
+      - --import-realm
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: llmuser
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-llmpass}
+      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-localhost}
+      KC_HTTP_PORT: 8080
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    container_name: llm-dlp-litellm
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://llmuser:${POSTGRES_PASSWORD:-llmpass}@postgres:5432/litellm
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-master-key-change-me}
+      LITELLM_SALT_KEY: ${LITELLM_SALT_KEY:-salt-key-change-me}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      QWEN_API_KEY: ${QWEN_API_KEY}
+      STORE_MODEL_IN_DB: "true"
+      SERVER_ROOT_PATH: ""
+    volumes:
+      - ./litellm/config.yaml:/app/config.yaml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command:
+      - --config
+      - /app/config.yaml
+
+  api-server:
+    image: llm-dlp-api:latest
+    container_name: llm-dlp-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://llmuser:${POSTGRES_PASSWORD:-llmpass}@postgres:5432/llm_dlp
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-llm-dlp}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-llm-dlp-web}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      LITELLM_BASE_URL: http://litellm:4000
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-master-key-change-me}
+      APP_SECRET_KEY: ${APP_SECRET_KEY}
+      APP_LOG_LEVEL: ${APP_LOG_LEVEL:-INFO}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+      litellm:
+        condition: service_started
+
+  web-client:
+    image: llm-dlp-web:latest
+    container_name: llm-dlp-web
+    restart: unless-stopped
+    networks:
+      - default
+      - npm_default
+    depends_on:
+      - api-server
+
+volumes:
+  pgdata:
+
+networks:
+  npm_default:
+    external: true

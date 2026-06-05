@@ -69,6 +69,10 @@ backend/tests/manual/output/
 # keys
 .env
 .env.local
+infra/.env.cloud
+
+# cloud deploy artifacts
+infra/images.tar.gz
 
 # logs
 logs/
