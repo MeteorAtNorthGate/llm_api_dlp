@@ -5,6 +5,7 @@ import ProtectedRoute from './components/layout/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import ChatPage from './pages/Chat/ChatPage';
 import AdminPage from './pages/Admin/AdminPage';
+import SystemAdminPage from './pages/System/SystemAdminPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 export default function App() {
@@ -29,6 +30,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <AdminPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/system"
+          element={
+            <ProtectedRoute>
+              <SystemAdminPage />
             </ProtectedRoute>
           }
         />

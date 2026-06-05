@@ -67,4 +67,18 @@ export const keysApi = {
   revoke: (id) => api.delete(`keys/${id}`),
 };
 
+// ── Admin (System) ────────────────────────────────────
+
+export const adminApi = {
+  listModels: () => api.get('admin/models').json(),
+
+  addModel: (payload) =>
+    api.post('admin/models', { json: payload }).json(),
+
+  updateModel: (id, payload) =>
+    api.put(`admin/models/${encodeURIComponent(id)}`, { json: payload }).json(),
+
+  deleteModel: (id) => api.delete(`admin/models/${encodeURIComponent(id)}`),
+};
+
 export default api;

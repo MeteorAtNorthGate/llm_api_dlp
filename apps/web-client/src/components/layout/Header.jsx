@@ -6,12 +6,25 @@ import Button from '../ui/Button';
 export default function Header() {
   const { user, logout } = useAuth();
 
+  const groups = user?.groups || [];
+  const isAdmin = groups.includes('admins');
+  const isDeveloper = groups.includes('developers');
+
   return (
     <header className="navbar bg-base-100 border-b border-base-300 px-4 shadow-sm">
       <div className="flex-1">
         <a href="/" className="text-xl font-bold tracking-tight">
           LLM Platform
         </a>
+        <div className="hidden sm:flex ml-6 gap-1">
+          <a href="/" className="btn btn-ghost btn-sm">Chat</a>
+          {isDeveloper && (
+            <a href="/admin" className="btn btn-ghost btn-sm">API Keys</a>
+          )}
+          {isAdmin && (
+            <a href="/system" className="btn btn-ghost btn-sm text-primary">System</a>
+          )}
+        </div>
       </div>
       <div className="flex-none gap-2">
         {user && (
@@ -30,9 +43,9 @@ export default function Header() {
               <li className="menu-title">
                 <span>{user.email}</span>
               </li>
-              <li>
-                <a href="/admin">API Keys</a>
-              </li>
+              <li><a href="/">Chat</a></li>
+              {isDeveloper && <li><a href="/admin">API Keys</a></li>}
+              {isAdmin && <li><a href="/system">System Admin</a></li>}
               <li>
                 <button onClick={logout}>Logout</button>
               </li>

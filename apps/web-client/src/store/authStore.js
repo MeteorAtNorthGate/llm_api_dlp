@@ -14,8 +14,10 @@ export const useAuthStore = create((set, get) => ({
     if (data.refresh_token) {
       localStorage.setItem('refresh_token', data.refresh_token);
     }
-    set({ isAuthenticated: true });
-    await get().fetchUser();
+    // Mark authenticated immediately — token is valid from Keycloak
+    set({ isAuthenticated: true, isLoading: false });
+    // Fetch user profile in background; failure won't invalidate the token
+    get().fetchUser();
   },
 
   logout: () => {
@@ -30,16 +32,19 @@ export const useAuthStore = create((set, get) => ({
   },
 
   fetchUser: async () => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      set({ user: null, isAuthenticated: false, isLoading: false });
+      return;
+    }
     try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        set({ isLoading: false });
-        return;
-      }
       const user = await authApi.me();
       set({ user, isAuthenticated: true, isLoading: false });
     } catch {
-      set({ user: null, isAuthenticated: false, isLoading: false });
+      // /auth/me failed (network issue, etc.) — keep the token,
+      // actual JWT validation happens server-side on each request
+      const stillHaveToken = !!localStorage.getItem('access_token');
+      set({ isAuthenticated: stillHaveToken, isLoading: false });
     }
   },
 

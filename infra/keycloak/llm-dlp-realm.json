@@ -39,6 +39,22 @@
   ],
   "users": [
     {
+      "username": "admin",
+      "email": "admin@example.com",
+      "firstName": "System",
+      "lastName": "Admin",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin123",
+          "temporary": false
+        }
+      ],
+      "groups": ["admins", "employees"]
+    },
+    {
       "username": "demo",
       "email": "demo@example.com",
       "firstName": "Demo",
@@ -72,6 +88,10 @@
     }
   ],
   "groups": [
+    {
+      "name": "admins",
+      "path": "/admins"
+    },
     {
       "name": "employees",
       "path": "/employees"

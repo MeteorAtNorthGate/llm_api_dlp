@@ -1,6 +1,6 @@
 /** LoginPage — handles Keycloak OIDC redirect flow. */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import Spinner from '../components/ui/Spinner';
@@ -11,24 +11,36 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [error, setError] = useState(null);
 
+  // Guard against React StrictMode double-mounting in development
+  const handledRef = useRef(false);
+
   useEffect(() => {
+    // If we already processed the auth code or redirect, skip
+    if (handledRef.current) return;
+
     const code = searchParams.get('code');
-    const state = searchParams.get('session_state');
 
     if (code) {
+      handledRef.current = true;
       const redirectUri = `${window.location.origin}/auth/callback`;
       const codeVerifier = sessionStorage.getItem('pkce_code_verifier') || '';
       sessionStorage.removeItem('pkce_code_verifier');
+
+      if (!codeVerifier) {
+        // PKCE verifier was already consumed (e.g., by StrictMode re-run)
+        // The first invocation already handled the login — just wait
+        return;
+      }
 
       login(code, redirectUri, codeVerifier).catch((err) => {
         setError('Login failed. Please try again.');
         console.error('Login error:', err);
       });
     } else if (!isLoading && !isAuthenticated) {
-      // No code — redirect to Keycloak
+      handledRef.current = true;
       redirectToLogin();
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isLoading, isAuthenticated, login, redirectToLogin, searchParams]);
 
   useEffect(() => {
     if (isAuthenticated) {
