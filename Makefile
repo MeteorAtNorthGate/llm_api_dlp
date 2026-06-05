@@ -3,15 +3,22 @@
 help:           ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-dev: dev-infra dev-api dev-web  ## Start all dev services (hot-reload)
+dev: dev-infra             ## Start all dev services (hot-reload)
+	@echo "🚀 API (port 8000) + Web (port 5173)"
+	cd apps/api-server && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 & \
+	cd apps/web-client && pnpm dev & \
+	echo "  API:  http://localhost:8000/docs" && \
+	echo "  Web:  http://localhost:5173" && \
+	echo "Ctrl+C to stop all" && \
+	wait
 
 dev-infra:      ## Start Postgres, Keycloak, LiteLLM (Docker)
 	DOCKER_BUILDKIT=0 docker compose -f infra/docker-compose.yml up -d postgres keycloak litellm
 
-dev-api:        ## Start FastAPI dev server with hot-reload
+dev-api:        ## Start FastAPI dev server with hot-reload (standalone)
 	cd apps/api-server && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-dev-web:        ## Start Vite dev server (HMR)
+dev-web:        ## Start Vite dev server with HMR (standalone)
 	cd apps/web-client && pnpm dev
 
 build:          ## Build all Docker images (local)
