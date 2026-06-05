@@ -13,7 +13,10 @@ dev: dev-infra             ## Start all dev services (hot-reload)
 	wait
 
 dev-infra:      ## Start Postgres, Keycloak, LiteLLM (Docker)
-	DOCKER_BUILDKIT=0 docker compose -f infra/docker-compose.yml up -d postgres keycloak litellm
+	DOCKER_BUILDKIT=0 docker compose -f infra/docker-compose.yml up -d postgres
+	@sleep 3
+	@docker exec llm-dlp-postgres psql -U llmuser -c "CREATE DATABASE keycloak;" 2>/dev/null || echo "  keycloak DB already exists"
+	DOCKER_BUILDKIT=0 docker compose -f infra/docker-compose.yml up -d keycloak litellm
 
 dev-api:        ## Start FastAPI dev server with hot-reload (standalone)
 	cd apps/api-server && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
