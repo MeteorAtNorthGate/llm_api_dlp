@@ -145,13 +145,17 @@ async def generate_key(
         expires_at = datetime.now(timezone.utc) + timedelta(days=body.duration_days)
 
     # Call LiteLLM Admin API to generate the virtual key
-    litellm_payload = {
+    litellm_payload: dict = {
         "key_alias": body.key_alias or f"key-{user.username}",
         "models": model_whitelist or [],
-        "max_budget": body.max_budget or 0.0,
-        "rpm_limit": body.rpm_limit or 0,
-        "tpm_limit": body.tpm_limit or 0,
     }
+    # Only include limits when explicitly set — sending 0 to LiteLLM means "zero allowed"
+    if body.max_budget is not None:
+        litellm_payload["max_budget"] = body.max_budget
+    if body.rpm_limit is not None:
+        litellm_payload["rpm_limit"] = body.rpm_limit
+    if body.tpm_limit is not None:
+        litellm_payload["tpm_limit"] = body.tpm_limit
 
     if expires_at:
         litellm_payload["duration"] = f"{body.duration_days}d"
