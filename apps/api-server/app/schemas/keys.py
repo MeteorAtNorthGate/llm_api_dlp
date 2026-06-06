@@ -36,6 +36,7 @@ class KeyGenerateResponse(BaseModel):
     max_budget: float | None = None
     expires_at: datetime | None = None
     created_at: datetime
+    base_url: str = ""  # 用户使用该 Key 时应配置的 LiteLLM 公开地址
 
 
 class KeySummary(BaseModel):

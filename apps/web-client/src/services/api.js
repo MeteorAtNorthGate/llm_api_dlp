@@ -82,6 +82,11 @@ export const adminApi = {
     api.put(`admin/models/${encodeURIComponent(id)}`, { json: payload }).json(),
 
   deleteModel: (id) => api.delete(`admin/models/${encodeURIComponent(id)}`),
+
+  getSettings: () => api.get('admin/settings').json(),
+
+  updateSetting: (key, value) =>
+    api.put('admin/settings', { json: { key, value } }).json(),
 };
 
 export default api;

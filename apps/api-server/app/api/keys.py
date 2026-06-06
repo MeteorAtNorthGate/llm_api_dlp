@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.security import get_current_user
 from app.db.models.api_key import ApiKey
+from app.db.models.platform_setting import PlatformSetting
 from app.db.models.user import User
 from app.db.session import get_session
 from app.schemas.keys import (
@@ -22,6 +23,17 @@ from app.schemas.keys import (
 )
 
 router = APIRouter()
+
+
+async def _get_platform_setting(session: AsyncSession, key: str, default: str = "") -> str:
+    """Read a platform setting from DB, falling back to the provided default."""
+    result = await session.execute(
+        select(PlatformSetting).where(PlatformSetting.key == key)
+    )
+    row = result.scalar_one_or_none()
+    if row and row.value:
+        return row.value
+    return default
 
 
 async def _get_or_create_user(
@@ -182,6 +194,10 @@ async def generate_key(
     await session.commit()
     await session.refresh(db_key)
 
+    public_url = await _get_platform_setting(
+        session, "litellm_public_url", settings.LITELLM_PUBLIC_URL
+    )
+
     return KeyGenerateResponse(
         id=db_key.id,
         key_alias=db_key.key_alias,
@@ -191,6 +207,7 @@ async def generate_key(
         max_budget=body.max_budget,
         expires_at=expires_at,
         created_at=db_key.created_at,
+        base_url=public_url,
     )
 
 

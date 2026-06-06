@@ -7,9 +7,13 @@ All operations proxy to LiteLLM's Admin API using the master key.
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.security import get_current_user
+from app.db.models.platform_setting import PlatformSetting
+from app.db.session import get_session
 
 router = APIRouter()
 
@@ -287,3 +291,73 @@ async def delete_model(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail=f"LiteLLM model deletion failed: {resp.text}",
             )
+
+
+# ── Platform Settings ──────────────────────────────────────────────────
+
+
+DEFAULT_SETTINGS: dict[str, str] = {
+    "litellm_public_url": settings.LITELLM_PUBLIC_URL,
+}
+
+
+class PlatformSettingsResponse(BaseModel):
+    """All platform settings as a flat key-value map."""
+    settings: dict[str, str]
+
+
+class PlatformSettingUpdateRequest(BaseModel):
+    """Update a single platform setting."""
+    key: str = Field(..., description="Setting key")
+    value: str = Field(..., description="New value")
+
+
+async def _get_setting(session: AsyncSession, key: str) -> str:
+    """Read a setting from DB, falling back to env default."""
+    result = await session.execute(
+        select(PlatformSetting).where(PlatformSetting.key == key)
+    )
+    row = result.scalar_one_or_none()
+    if row and row.value:
+        return row.value
+    return DEFAULT_SETTINGS.get(key, "")
+
+
+@router.get("/settings", response_model=PlatformSettingsResponse)
+async def get_settings(
+    user: dict = Depends(_require_admin),
+    session: AsyncSession = Depends(get_session),
+):
+    """Get all platform settings (admin-only)."""
+    result = {}
+    for key in DEFAULT_SETTINGS:
+        result[key] = await _get_setting(session, key)
+    return PlatformSettingsResponse(settings=result)
+
+
+@router.put("/settings", status_code=status.HTTP_200_OK)
+async def update_setting(
+    body: PlatformSettingUpdateRequest,
+    user: dict = Depends(_require_admin),
+    session: AsyncSession = Depends(get_session),
+):
+    """Update a platform setting (admin-only)."""
+    if body.key not in DEFAULT_SETTINGS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown setting key: {body.key}",
+        )
+
+    result = await session.execute(
+        select(PlatformSetting).where(PlatformSetting.key == body.key)
+    )
+    row = result.scalar_one_or_none()
+
+    if row:
+        row.value = body.value
+    else:
+        row = PlatformSetting(key=body.key, value=body.value)
+        session.add(row)
+
+    await session.commit()
+    return {"status": "updated", "key": body.key, "value": body.value}

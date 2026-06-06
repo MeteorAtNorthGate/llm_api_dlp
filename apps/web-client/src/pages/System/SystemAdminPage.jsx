@@ -62,6 +62,13 @@ export default function SystemAdminPage() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Platform settings
+  const [platformSettings, setPlatformSettings] = useState({});
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsError, setSettingsError] = useState(null);
+  const [settingsSuccess, setSettingsSuccess] = useState(null);
+
   // ── Fetch models ──────────────────────────────────────
 
   const fetchModels = async () => {
@@ -77,8 +84,37 @@ export default function SystemAdminPage() {
     }
   };
 
+  const fetchSettings = async () => {
+    setSettingsLoading(true);
+    try {
+      const data = await adminApi.getSettings();
+      setPlatformSettings(data.settings || {});
+    } catch (err) {
+      console.error('Failed to load platform settings', err);
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const handleSaveSetting = async (key, value) => {
+    setSettingsSaving(true);
+    setSettingsError(null);
+    setSettingsSuccess(null);
+    try {
+      await adminApi.updateSetting(key, value);
+      setPlatformSettings((prev) => ({ ...prev, [key]: value }));
+      setSettingsSuccess(`Saved: ${key}`);
+      setTimeout(() => setSettingsSuccess(null), 3000);
+    } catch (err) {
+      setSettingsError(err.message || 'Failed to save setting');
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
+
   useEffect(() => {
     fetchModels();
+    fetchSettings();
   }, []);
 
   // ── Add model ─────────────────────────────────────────
@@ -208,6 +244,74 @@ export default function SystemAdminPage() {
             <button className="btn btn-ghost btn-xs" onClick={() => setError(null)}>✕</button>
           </div>
         )}
+
+        {/* Platform Settings */}
+        <div className="card bg-base-100 shadow-sm border border-base-300">
+          <div className="card-body p-5">
+            <h2 className="card-title text-base">Platform Settings</h2>
+            <p className="text-sm text-base-content/60">
+              Configure platform-wide settings. Changes take effect immediately — no restart required.
+            </p>
+
+            {settingsLoading ? (
+              <div className="flex justify-center py-4"><Spinner size="sm" /></div>
+            ) : (
+              <div className="space-y-4 mt-2">
+                {/* LiteLLM Public URL */}
+                <div className="form-control">
+                  <label className="label pb-1">
+                    <span className="label-text font-medium">LiteLLM Public URL</span>
+                    <span className="label-text-alt text-base-content/50">
+                      Shown to users after they generate an API key
+                    </span>
+                  </label>
+                  <div className="join">
+                    <input
+                      type="text"
+                      className="input input-bordered join-item flex-1 font-mono text-sm"
+                      placeholder="http://llmplatform.oaseas.int"
+                      value={platformSettings.litellm_public_url || ''}
+                      onChange={(e) =>
+                        setPlatformSettings((prev) => ({
+                          ...prev,
+                          litellm_public_url: e.target.value,
+                        }))
+                      }
+                    />
+                    <button
+                      className="btn btn-primary join-item"
+                      disabled={settingsSaving}
+                      onClick={() =>
+                        handleSaveSetting('litellm_public_url', platformSettings.litellm_public_url)
+                      }
+                    >
+                      {settingsSaving && <span className="loading loading-spinner loading-xs" />}
+                      Save
+                    </button>
+                  </div>
+                  <label className="label">
+                    <span className="label-text-alt text-base-content/50">
+                      This is the base URL users configure in their SDKs (e.g., OpenAI base_url,
+                      Anthropic base_url). LiteLLM proxy runs on port 4000 — use DNS/nginx to map
+                      this domain to the LiteLLM container.
+                    </span>
+                  </label>
+                </div>
+
+                {settingsError && (
+                  <div className="alert alert-error text-sm">
+                    <span>{settingsError}</span>
+                  </div>
+                )}
+                {settingsSuccess && (
+                  <div className="alert alert-success text-sm">
+                    <span>{settingsSuccess}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Model list */}
         {loading ? (

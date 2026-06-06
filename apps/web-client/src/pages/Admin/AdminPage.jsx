@@ -1,6 +1,6 @@
 /** AdminPage — API key management dashboard. */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Layout from '../../components/layout/Layout';
 import KeyCard from '../../components/admin/KeyCard';
 import UsageChart from '../../components/admin/UsageChart';
@@ -8,12 +8,7 @@ import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Spinner from '../../components/ui/Spinner';
 import { useKeyStore } from '../../store/keyStore';
-
-const AVAILABLE_MODELS = [
-  { value: 'gpt-4o', label: 'GPT-4o' },
-  { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
-  { value: 'qwen-max', label: 'Qwen Max' },
-];
+import { chatApi } from '../../services/api';
 
 export default function AdminPage() {
   const {
@@ -27,6 +22,7 @@ export default function AdminPage() {
     closeNewKeyModal,
   } = useKeyStore();
 
+  const [availableModels, setAvailableModels] = useState([]);
   const [form, setForm] = useState({
     key_alias: '',
     models: [],
@@ -38,9 +34,23 @@ export default function AdminPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const loadAvailableModels = useCallback(async () => {
+    try {
+      const data = await chatApi.listModels();
+      const models = (data.models || []).map((m) => ({
+        value: m.name,
+        label: m.name,
+      }));
+      setAvailableModels(models);
+    } catch (err) {
+      console.error('Failed to load available models', err);
+    }
+  }, []);
+
   useEffect(() => {
     loadKeys();
-  }, [loadKeys]);
+    loadAvailableModels();
+  }, [loadKeys, loadAvailableModels]);
 
   const handleModelToggle = (model) => {
     setForm((prev) => ({
@@ -151,7 +161,10 @@ export default function AdminPage() {
                   <span className="label-text">Models (none = all available)</span>
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {AVAILABLE_MODELS.map((m) => (
+                  {availableModels.length === 0 && (
+                    <span className="text-sm text-base-content/50">Loading models...</span>
+                  )}
+                  {availableModels.map((m) => (
                     <label key={m.value} className="label cursor-pointer gap-2">
                       <input
                         type="checkbox"
@@ -239,8 +252,10 @@ export default function AdminPage() {
             open={showNewKeyModal}
             onClose={closeNewKeyModal}
             title="API Key Generated"
+            size="lg"
           >
-            <div className="space-y-4">
+            <div className="space-y-5">
+              {/* Warning */}
               <div className="alert alert-warning">
                 <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
@@ -250,6 +265,7 @@ export default function AdminPage() {
                 </span>
               </div>
 
+              {/* API Key */}
               <div className="form-control">
                 <label className="label">
                   <span className="label-text font-bold">Your API Key</span>
@@ -270,7 +286,94 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              <div className="text-sm text-base-content/60">
+              {/* Base URL & Quick Start */}
+              {newKeyData.base_url && (
+                <div className="space-y-3">
+                  <div className="divider text-sm text-base-content/50">Usage Guide</div>
+
+                  {/* Base URL display */}
+                  <div className="form-control">
+                    <label className="label pb-1">
+                      <span className="label-text font-semibold">Base URL</span>
+                    </label>
+                    <div className="join w-full">
+                      <input
+                        type="text"
+                        className="input input-bordered join-item flex-1 font-mono text-sm"
+                        value={newKeyData.base_url}
+                        readOnly
+                      />
+                      <button
+                        className="btn btn-outline join-item"
+                        onClick={() => copyToClipboard(newKeyData.base_url)}
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* OpenAI SDK example */}
+                  <div className="bg-base-200 rounded-lg p-3 space-y-2">
+                    <span className="text-xs font-semibold uppercase text-base-content/50">
+                      OpenAI SDK / OpenAI 兼容客户端
+                    </span>
+                    <pre className="text-xs overflow-x-auto">
+                      <code>{`from openai import OpenAI
+
+client = OpenAI(
+    base_url="${newKeyData.base_url}/v1",
+    api_key="${newKeyData.api_key}",
+)
+# model 填任意在平台配置的模型名即可
+response = client.chat.completions.create(
+    model="${newKeyData.models?.[0] || 'gpt-4o-mini'}",
+    messages=[{"role": "user", "content": "Hello"}],
+)`}</code>
+                    </pre>
+                    <div className="text-xs text-base-content/50">
+                      或设置环境变量：<br />
+                      <code className="bg-base-300 px-1 rounded">export OPENAI_BASE_URL="{newKeyData.base_url}/v1"</code><br />
+                      <code className="bg-base-300 px-1 rounded">export OPENAI_API_KEY="{newKeyData.api_key}"</code>
+                    </div>
+                  </div>
+
+                  {/* Anthropic SDK example */}
+                  <div className="bg-base-200 rounded-lg p-3 space-y-2">
+                    <span className="text-xs font-semibold uppercase text-base-content/50">
+                      Anthropic SDK
+                    </span>
+                    <pre className="text-xs overflow-x-auto">
+                      <code>{`# 环境变量方式
+export ANTHROPIC_BASE_URL="${newKeyData.base_url}/anthropic"
+export ANTHROPIC_API_KEY="${newKeyData.api_key}"
+
+# 或代码中配置
+import anthropic
+client = anthropic.Anthropic(
+    base_url="${newKeyData.base_url}/anthropic",
+    api_key="${newKeyData.api_key}",
+)`}</code>
+                    </pre>
+                  </div>
+
+                  {/* curl example */}
+                  <div className="bg-base-200 rounded-lg p-3 space-y-2">
+                    <span className="text-xs font-semibold uppercase text-base-content/50">
+                      curl 快速测试
+                    </span>
+                    <pre className="text-xs overflow-x-auto">
+                      <code>{`curl -X POST "${newKeyData.base_url}/v1/chat/completions" \\
+  -H "Authorization: Bearer ${newKeyData.api_key}" \\
+  -H "Content-Type: application/json" \\
+  -d '{"model": "${newKeyData.models?.[0] || 'gpt-4o-mini'}", "messages": [{"role": "user", "content": "Hello"}]}'`}</code>
+                    </pre>
+                  </div>
+                </div>
+              )}
+
+              {/* Key metadata */}
+              <div className="text-sm text-base-content/60 space-y-1">
+                <div className="divider text-sm text-base-content/50 mb-1">Key Details</div>
                 <p>
                   <strong>Key Suffix:</strong> {newKeyData.key_suffix}
                 </p>

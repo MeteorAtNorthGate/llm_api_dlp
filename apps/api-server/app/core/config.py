@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     # LiteLLM
     LITELLM_BASE_URL: str = "http://localhost:4000"
     LITELLM_MASTER_KEY: str = "sk-master-key-change-me"
+    LITELLM_PUBLIC_URL: str = "http://localhost:4000"  # 对外暴露给用户的 LiteLLM 访问地址
 
     # App
     APP_SECRET_KEY: str = "dev-secret-key-change-me"
