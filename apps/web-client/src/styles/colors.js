@@ -24,10 +24,10 @@
 
 export const lightTheme = {
   /* ── Brand Colors ─────────────────────────────────────────────────── */
-  'primary':           '#4f46e5',  /* Indigo 600 — main brand */
+  'primary':           '#466be5',  /* Indigo 600 — main brand */
   'primary-content':   '#ffffff',  /* Text on primary bg */
 
-  'secondary':         '#7c3aed',  /* Violet 600 — secondary elements */
+  'secondary':         '#4c3aed',  /* Violet 600 — secondary elements */
   'secondary-content': '#ffffff',
 
   'accent':            '#06b6d4',  /* Cyan 500 — highlights, focus rings */
