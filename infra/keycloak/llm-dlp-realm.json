@@ -86,9 +86,9 @@
       "groups": ["employees"]
     },
     {
-      "username": "developer",
-      "email": "dev@example.com",
-      "firstName": "Dev",
+      "username": "devuser",
+      "email": "devuser@example.com",
+      "firstName": "DevUser",
       "lastName": "User",
       "enabled": true,
       "emailVerified": true,

@@ -1,25 +1,11 @@
 model_list:
-  - model_name: gpt-4o
+  - model_name: deepseek-v4-flash
     litellm_params:
-      model: openai/gpt-4o
-      api_key: ${OPENAI_API_KEY}
+      model: deepseek/deepseek-v4-flash
+      api_base: https://api.deepseek.com
+      api_key: ${DEEPSEEK_API_KEY}
       rpm: 500
       tpm: 100000
-
-  - model_name: gpt-4o-mini
-    litellm_params:
-      model: openai/gpt-4o-mini
-      api_key: ${OPENAI_API_KEY}
-      rpm: 1000
-      tpm: 200000
-
-  - model_name: qwen-max
-    litellm_params:
-      model: openai/qwen-max
-      api_base: https://dashscope-intl.aliyuncs.com/compatible-mode/v1
-      api_key: ${QWEN_API_KEY}
-      rpm: 300
-      tpm: 80000
 
 general_settings:
   master_key: sk-master-key-change-me

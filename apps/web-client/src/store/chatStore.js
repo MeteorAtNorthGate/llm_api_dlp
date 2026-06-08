@@ -10,7 +10,7 @@ export const useChatStore = create((set, get) => ({
   isStreaming: false,
   streamContent: '',
   availableModels: [],
-  selectedModel: 'gpt-4o-mini',
+  selectedModel: 'deepseek-v4-flash',
 
   // Load available models from backend
   loadModels: async () => {
@@ -65,7 +65,7 @@ export const useChatStore = create((set, get) => ({
   // Send a message and stream the response
   sendMessage: async (content) => {
     const { activeConversationId, messages, selectedModel } = get();
-    const model = selectedModel || 'gpt-4o-mini';
+    const model = selectedModel || 'deepseek-chat';
 
     // Add user message immediately
     const userMsg = { role: 'user', content, id: Date.now().toString() };

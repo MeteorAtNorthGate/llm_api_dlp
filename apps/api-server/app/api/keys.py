@@ -75,7 +75,7 @@ def _resolve_model_whitelist(user_claims: dict, requested_models: list[str] | No
     if requested_models:
         return requested_models
     # Default: allow the smaller models
-    return ["gpt-4o-mini", "qwen-max"]
+    return ["deepseek-v4-flash"]
 
 
 @router.get("", response_model=KeyUsageResponse)

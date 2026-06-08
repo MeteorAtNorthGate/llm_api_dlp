@@ -326,7 +326,7 @@ client = OpenAI(
 )
 # model 填任意在平台配置的模型名即可
 response = client.chat.completions.create(
-    model="${newKeyData.models?.[0] || 'gpt-4o-mini'}",
+    model="${newKeyData.models?.[0] || 'deepseek-v4-flash'}",
     messages=[{"role": "user", "content": "Hello"}],
 )`}</code>
                     </pre>
@@ -365,7 +365,7 @@ client = anthropic.Anthropic(
                       <code>{`curl -X POST "${newKeyData.base_url}/v1/chat/completions" \\
   -H "Authorization: Bearer ${newKeyData.api_key}" \\
   -H "Content-Type: application/json" \\
-  -d '{"model": "${newKeyData.models?.[0] || 'gpt-4o-mini'}", "messages": [{"role": "user", "content": "Hello"}]}'`}</code>
+  -d '{"model": "${newKeyData.models?.[0] || 'deepseek-v4-flash'}", "messages": [{"role": "user", "content": "Hello"}]}'`}</code>
                     </pre>
                   </div>
                 </div>

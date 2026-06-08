@@ -14,7 +14,7 @@ class ChatMessage(BaseModel):
 
 class ChatCompletionRequest(BaseModel):
     """OpenAI-compatible chat completion request."""
-    model: str = "gpt-4o-mini"
+    model: str = "deepseek-v4-flash"
     messages: list[ChatMessage]
     conversation_id: str | None = Field(
         default=None, description="Existing conversation ID for continuing a chat"
