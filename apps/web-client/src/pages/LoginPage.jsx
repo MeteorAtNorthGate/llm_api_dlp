@@ -14,6 +14,9 @@ export default function LoginPage() {
   // Guard against React StrictMode double-mounting in development
   const handledRef = useRef(false);
 
+  const loggedOut = searchParams.get('logged_out') === 'true';
+  const sessionExpired = searchParams.get('session_expired') === 'true';
+
   useEffect(() => {
     // If we already processed the auth code or redirect, skip
     if (handledRef.current) return;
@@ -37,16 +40,40 @@ export default function LoginPage() {
         console.error('Login error:', err);
       });
     } else if (!isLoading && !isAuthenticated) {
-      handledRef.current = true;
-      redirectToLogin();
+      // Don't auto-redirect to Keycloak after logout or session expiry —
+      // that would re-authenticate the user via the existing SSO session.
+      if (!loggedOut && !sessionExpired) {
+        handledRef.current = true;
+        redirectToLogin();
+      }
     }
-  }, [isLoading, isAuthenticated, login, redirectToLogin, searchParams]);
+  }, [isLoading, isAuthenticated, login, redirectToLogin, searchParams, loggedOut, sessionExpired]);
 
   useEffect(() => {
     if (isAuthenticated) {
       navigate('/', { replace: true });
     }
   }, [isAuthenticated, navigate]);
+
+  // ── Logged-out state ──────────────────────────────────
+
+  if (loggedOut || sessionExpired) {
+    const message = sessionExpired
+      ? 'Your session has expired. Please log in again.'
+      : 'You have been logged out.';
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-6">
+          <h1 className="text-2xl font-semibold">{message}</h1>
+          <button className="btn btn-primary" onClick={redirectToLogin}>
+            Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Error state ───────────────────────────────────────
 
   if (error) {
     return (
@@ -67,6 +94,8 @@ export default function LoginPage() {
       </div>
     );
   }
+
+  // ── Loading state ─────────────────────────────────────
 
   return (
     <div className="flex items-center justify-center min-h-screen">

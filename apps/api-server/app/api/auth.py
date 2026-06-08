@@ -59,6 +59,7 @@ async def auth_callback(body: AuthCallbackRequest):
         return TokenResponse(
             access_token=data["access_token"],
             refresh_token=data.get("refresh_token"),
+            id_token=data.get("id_token"),
             expires_in=data.get("expires_in", 3600),
             token_type=data.get("token_type", "Bearer"),
         )

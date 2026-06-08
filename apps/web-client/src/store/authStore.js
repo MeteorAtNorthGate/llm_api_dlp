@@ -14,6 +14,9 @@ export const useAuthStore = create((set, get) => ({
     if (data.refresh_token) {
       localStorage.setItem('refresh_token', data.refresh_token);
     }
+    if (data.id_token) {
+      localStorage.setItem('id_token', data.id_token);
+    }
     // Mark authenticated immediately — token is valid from Keycloak
     set({ isAuthenticated: true, isLoading: false });
     // Fetch user profile in background; failure won't invalidate the token
@@ -21,14 +24,29 @@ export const useAuthStore = create((set, get) => ({
   },
 
   logout: () => {
+    const idToken = localStorage.getItem('id_token');
+    const accessToken = localStorage.getItem('access_token');
+
+    // Clear all auth state
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
+    localStorage.removeItem('id_token');
     set({ user: null, isAuthenticated: false });
 
-    // Redirect to Keycloak logout
+    // Build Keycloak logout URL with id_token_hint so Keycloak
+    // properly terminates the SSO session. Falls back to access_token
+    // if id_token wasn't returned (some OIDC flows omit it).
     const keycloakUrl = 'http://localhost:8080';
     const realm = 'llm-dlp';
-    window.location.href = `${keycloakUrl}/realms/${realm}/protocol/openid-connect/logout?redirect_uri=${encodeURIComponent(window.location.origin)}`;
+    const postLogoutUri = `${window.location.origin}/login?logged_out=true`;
+    let logoutUrl = `${keycloakUrl}/realms/${realm}/protocol/openid-connect/logout?post_logout_redirect_uri=${encodeURIComponent(postLogoutUri)}`;
+
+    const tokenHint = idToken || accessToken;
+    if (tokenHint) {
+      logoutUrl += `&id_token_hint=${encodeURIComponent(tokenHint)}`;
+    }
+
+    window.location.href = logoutUrl;
   },
 
   fetchUser: async () => {

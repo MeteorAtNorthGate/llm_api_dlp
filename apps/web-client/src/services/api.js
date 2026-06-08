@@ -20,7 +20,7 @@ const api = ky.create({
         if (response.status === 401) {
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
-          window.location.href = '/login';
+          window.location.href = '/login?session_expired=true';
         }
       },
     ],

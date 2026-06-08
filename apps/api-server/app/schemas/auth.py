@@ -17,6 +17,7 @@ class TokenResponse(BaseModel):
     """Token response from Keycloak callback exchange."""
     access_token: str
     refresh_token: str | None = None
+    id_token: str | None = None
     expires_in: int
     token_type: str = "Bearer"
 
