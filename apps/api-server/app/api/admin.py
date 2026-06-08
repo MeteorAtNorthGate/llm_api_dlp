@@ -25,7 +25,7 @@ PROVIDER_PREFIX: dict[str, str] = {
     "anthropic": "anthropic",
     "qwen": "openai",            # Qwen uses OpenAI-compatible API
     "deepseek": "deepseek",
-    "deepseek_for_cc": "deepseek",  # DeepSeek Anthropic-compatible API, model prefix stays "deepseek"
+    "deepseek_for_cc": "",  # No prefix — custom_llm_provider handles adapter selection
     "google": "gemini",
     "vertex_ai": "vertex_ai",
     "mistral": "mistral",
