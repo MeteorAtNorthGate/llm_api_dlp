@@ -68,14 +68,16 @@ def _is_developer(user_claims: dict) -> bool:
 
 
 def _resolve_model_whitelist(user_claims: dict, requested_models: list[str] | None) -> list[str] | None:
-    """Resolve model whitelist based on user's department/group permissions.
+    """Resolve model whitelist based on requested models.
 
-    Developers can request specific models; all others get default models.
+    When developers specify models, the key is restricted to those models.
+    When no models are specified, the key has access to ALL available models
+    (the 'models' field is omitted from the LiteLLM payload entirely).
     """
     if requested_models:
         return requested_models
-    # Default: allow the smaller models
-    return ["deepseek-v4-flash"]
+    # Default: no restriction — key can access all models
+    return None
 
 
 @router.get("", response_model=KeyUsageResponse)
@@ -147,8 +149,9 @@ async def generate_key(
     # Call LiteLLM Admin API to generate the virtual key
     litellm_payload: dict = {
         "key_alias": body.key_alias or f"key-{user.username}",
-        "models": model_whitelist or [],
     }
+    if model_whitelist:
+        litellm_payload["models"] = model_whitelist
     # Only include limits when explicitly set — sending 0 to LiteLLM means "zero allowed"
     if body.max_budget is not None:
         litellm_payload["max_budget"] = body.max_budget
