@@ -13,6 +13,7 @@ const PROVIDERS = [
   { value: 'anthropic', label: 'Anthropic (Claude)', defaultBase: '' },
   { value: 'qwen', label: 'Qwen / Alibaba', defaultBase: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1' },
   { value: 'deepseek', label: 'DeepSeek', defaultBase: 'https://api.deepseek.com/v1' },
+  { value: 'deepseek_for_cc', label: 'DeepSeek (Anthropic-Compatible)', defaultBase: 'https://api.deepseek.com/anthropic' },
   { value: 'google', label: 'Google AI (Gemini)', defaultBase: '' },
   { value: 'vertex_ai', label: 'Google Vertex AI', defaultBase: '' },
   { value: 'mistral', label: 'Mistral AI', defaultBase: 'https://api.mistral.ai/v1' },

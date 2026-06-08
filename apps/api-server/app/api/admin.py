@@ -25,6 +25,7 @@ PROVIDER_PREFIX: dict[str, str] = {
     "anthropic": "anthropic",
     "qwen": "openai",            # Qwen uses OpenAI-compatible API
     "deepseek": "deepseek",
+    "deepseek_for_cc": "deepseek",  # DeepSeek Anthropic-compatible API, model prefix stays "deepseek"
     "google": "gemini",
     "vertex_ai": "vertex_ai",
     "mistral": "mistral",
@@ -45,6 +46,7 @@ PROVIDER_DEFAULT_BASE: dict[str, str] = {
     "openai": "https://api.openai.com/v1",
     "qwen": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
     "deepseek": "https://api.deepseek.com/v1",
+    "deepseek_for_cc": "https://api.deepseek.com/anthropic",
     "mistral": "https://api.mistral.ai/v1",
     "groq": "https://api.groq.com/openai/v1",
     "cohere": "https://api.cohere.com/v1",
@@ -53,6 +55,14 @@ PROVIDER_DEFAULT_BASE: dict[str, str] = {
     "xai": "https://api.x.ai/v1",
     "ollama": "http://localhost:11434/v1",
     "openrouter": "https://openrouter.ai/api/v1",
+}
+
+# Provider → custom_llm_provider override (decouples model prefix from adapter)
+# When set, LiteLLM uses the specified adapter regardless of the model prefix.
+# E.g., deepseek_for_cc has model prefix "deepseek/" but uses Anthropic adapter
+# because the endpoint (https://api.deepseek.com/anthropic) expects Anthropic format.
+PROVIDER_CUSTOM_LLM_PROVIDER: dict[str, str] = {
+    "deepseek_for_cc": "anthropic",
 }
 
 # ── Auth helper ──────────────────────────────────────────────────────
@@ -202,6 +212,13 @@ async def add_model(body: ModelAddRequest, user: dict = Depends(_require_admin))
         litellm_params["rpm"] = body.rpm
     if body.tpm is not None:
         litellm_params["tpm"] = body.tpm
+
+    # Override the provider adapter when the endpoint format differs
+    # from what the model prefix implies (e.g., deepseek_for_cc uses
+    # Anthropic-compatible endpoint but keeps deepseek/ model prefix).
+    custom_provider = PROVIDER_CUSTOM_LLM_PROVIDER.get(body.provider)
+    if custom_provider:
+        litellm_params["custom_llm_provider"] = custom_provider
 
     async with httpx.AsyncClient(timeout=30.0) as client:
         resp = await client.post(
