@@ -47,7 +47,7 @@ class Attachment(Base):
     storage_bucket: Mapped[str] = mapped_column(String(128), nullable=False)
     storage_object_key: Mapped[str] = mapped_column(String(1024), nullable=False)
 
-    # Parsed content (populated by unstructured)
+    # Parsed content (populated by parse_service)
     parsed_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     parsed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

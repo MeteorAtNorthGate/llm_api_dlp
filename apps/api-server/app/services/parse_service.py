@@ -1,23 +1,27 @@
-"""Document parsing service — uses unstructured library to extract text.
+"""Document parsing service — lightweight format-specific parsers.
 
-Handles PDF, DOCX, XLSX, TXT, CSV, MD, and common image formats.
+Uses per-format libraries (pymupdf, python-docx, openpyxl, xlrd) instead of the
+heavy unstructured library which pulls in PyTorch, transformers, ONNX, etc.
+
+Handles: PDF, DOCX, XLSX, XLS, TXT, CSV, MD, and common image formats.
+Legacy .doc (pre-2007 Word) is NOT supported — users should convert to .docx.
 """
 
-import tempfile
+from io import BytesIO
 from pathlib import Path
 
 from app.core.config import settings
 
 # File extensions we can parse
 SUPPORTED_EXTENSIONS: set[str] = {
-    ".pdf", ".docx", ".doc", ".xlsx", ".xls",
+    ".pdf", ".docx", ".xlsx", ".xls",
     ".txt", ".csv", ".md",
     ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp",
 }
 
 # Extensions that produce meaningful text
 TEXT_PRODUCING_EXTENSIONS: set[str] = {
-    ".pdf", ".docx", ".doc", ".xlsx", ".xls", ".txt", ".csv", ".md",
+    ".pdf", ".docx", ".xlsx", ".xls", ".txt", ".csv", ".md",
 }
 
 
@@ -26,11 +30,72 @@ def estimate_tokens(text: str) -> int:
     return max(1, len(text) // 4)
 
 
-def parse_document(file_content: bytes, file_name: str) -> str:
-    """Parse a document using unstructured library and return extracted text.
+# ── per-format parsers (all work on bytes, no temp files needed) ──────────
 
-    Uses file-type-specific partition functions for best results.
-    Falls back to plain text for unsupported types.
+
+def _parse_pdf(content: bytes) -> str:
+    """Extract text from PDF using pymupdf (fitz) — C-backed, no ML deps."""
+    import fitz  # pymupdf
+    doc = fitz.open(stream=content, filetype="pdf")
+    try:
+        return "\n".join(page.get_text() for page in doc)
+    finally:
+        doc.close()
+
+
+def _parse_docx(content: bytes) -> str:
+    """Extract text from DOCX using python-docx — pure-XML parser."""
+    from docx import Document
+    doc = Document(BytesIO(content))
+    return "\n".join(p.text for p in doc.paragraphs if p.text)
+
+
+def _parse_xlsx(content: bytes) -> str:
+    """Extract text from XLSX using openpyxl in read-only mode (low memory)."""
+    from openpyxl import load_workbook
+    wb = load_workbook(BytesIO(content), read_only=True, data_only=True)
+    parts = []
+    for sheet_name in wb.sheetnames:
+        ws = wb[sheet_name]
+        parts.append(f"[Sheet: {sheet_name}]")
+        for row in ws.iter_rows():
+            parts.append("\t".join(str(cell.value or "") for cell in row))
+    wb.close()
+    return "\n".join(parts)
+
+
+def _parse_xls(content: bytes) -> str:
+    """Extract text from legacy XLS using xlrd — pure-Python, no deps."""
+    import xlrd
+    wb = xlrd.open_workbook(file_contents=content)
+    parts = []
+    for sheet in wb.sheets():
+        parts.append(f"[Sheet: {sheet.name}]")
+        for row_idx in range(sheet.nrows):
+            parts.append("\t".join(
+                str(sheet.cell_value(row_idx, col_idx))
+                for col_idx in range(sheet.ncols)
+            ))
+    return "\n".join(parts)
+
+
+def _parse_text(content: bytes) -> str:
+    """Decode plain text — tries UTF-8, then GBK, then latin-1 fallback."""
+    for encoding in ("utf-8", "gbk", "latin-1"):
+        try:
+            return content.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return content.decode("utf-8", errors="replace")
+
+
+# ── public API ─────────────────────────────────────────────────────────────
+
+
+def parse_document(file_content: bytes, file_name: str) -> str:
+    """Parse a document and return extracted text.
+
+    Uses lightweight per-format libraries — no PyTorch / CUDA / ONNX.
 
     Raises:
         ValueError: if file extension is not in SUPPORTED_EXTENSIONS.
@@ -45,43 +110,21 @@ def parse_document(file_content: bytes, file_name: str) -> str:
     if ext in (".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"):
         return f"[Image file: {file_name} — OCR not yet supported]"
 
-    # Write to temp file for unstructured (most partition functions want a filename)
-    with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
-        tmp.write(file_content)
-        tmp_path = tmp.name
-
     try:
         if ext == ".pdf":
-            from unstructured.partition.pdf import partition_pdf
-            elements = partition_pdf(filename=tmp_path, strategy="auto")
-        elif ext in (".docx", ".doc"):
-            from unstructured.partition.docx import partition_docx
-            elements = partition_docx(filename=tmp_path)
-        elif ext in (".xlsx", ".xls"):
-            from unstructured.partition.xlsx import partition_xlsx
-            elements = partition_xlsx(filename=tmp_path)
-        elif ext == ".csv":
-            from unstructured.partition.csv import partition_csv
-            elements = partition_csv(filename=tmp_path)
-        elif ext == ".md":
-            from unstructured.partition.md import partition_md
-            elements = partition_md(filename=tmp_path)
-        elif ext == ".txt":
-            from unstructured.partition.text import partition_text
-            elements = partition_text(filename=tmp_path)
+            return _parse_pdf(file_content)
+        elif ext == ".docx":
+            return _parse_docx(file_content)
+        elif ext == ".xlsx":
+            return _parse_xlsx(file_content)
+        elif ext == ".xls":
+            return _parse_xls(file_content)
+        elif ext in (".txt", ".csv", ".md"):
+            return _parse_text(file_content)
         else:
             return f"[Unsupported file type: {ext}]"
-
-        return "\n\n".join(str(el) for el in elements)
-
     except Exception as e:
         raise RuntimeError(f"Failed to parse {file_name}: {e}") from e
-
-    finally:
-        try:
-            Path(tmp_path).unlink(missing_ok=True)
-        except Exception:
-            pass
 
 
 def build_injection_text(parsed_text: str, file_name: str) -> str:

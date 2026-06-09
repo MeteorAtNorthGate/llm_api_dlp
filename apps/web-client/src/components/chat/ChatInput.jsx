@@ -14,7 +14,6 @@ const FILE_TYPE_GROUPS = [
     accept: {
       'application/pdf': ['.pdf'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-      'application/msword': ['.doc'],
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
       'application/vnd.ms-excel': ['.xls'],
       'text/plain': ['.txt'],
@@ -28,7 +27,6 @@ const FILE_TYPE_GROUPS = [
     description: 'Word Documents',
     accept: {
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-      'application/msword': ['.doc'],
     },
   },
   {
@@ -51,7 +49,7 @@ const FILE_TYPE_GROUPS = [
 // Flat extension list for the <input> fallback — stays as one entry but at
 // least keeps the filter label short (no multi-hundred-char MIME strings).
 const ACCEPT_EXTENSIONS_STR =
-  '.pdf,.docx,.doc,.xlsx,.xls,.txt,.csv,.md,.png,.jpg,.jpeg,.gif,.bmp,.webp';
+  '.pdf,.docx,.xlsx,.xls,.txt,.csv,.md,.png,.jpg,.jpeg,.gif,.bmp,.webp';
 
 // Quick lookup: which extensions are allowed (for client-side validation).
 const ALLOWED_EXTS = new Set(
@@ -61,7 +59,6 @@ const ALLOWED_EXTS = new Set(
 const FILE_TYPE_ICONS = {
   pdf: '📄',
   docx: '📝',
-  doc: '📝',
   xlsx: '📊',
   xls: '📊',
   txt: '📃',
@@ -179,7 +176,6 @@ export default function ChatInput({
     accept: {
       'application/pdf': ['.pdf'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-      'application/msword': ['.doc'],
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
       'application/vnd.ms-excel': ['.xls'],
       'text/plain': ['.txt'],
