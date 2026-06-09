@@ -28,7 +28,7 @@ export default function MessageBubble({ message }) {
         {isUser ? (
           <p className="whitespace-pre-wrap">{content}</p>
         ) : (
-          <div className="prose prose-sm max-w-none">
+          <div className="prose prose-sm max-w-none text-neutral-content">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {content}
             </ReactMarkdown>
