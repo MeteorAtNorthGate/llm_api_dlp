@@ -6,6 +6,58 @@ import { useDropzone } from 'react-dropzone';
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 const MAX_FILES = 5;
 
+// Each group becomes a SEPARATE entry in the file-picker's file-type dropdown.
+// (Only effective via showOpenFilePicker; the <input> fallback uses a flat list.)
+const FILE_TYPE_GROUPS = [
+  {
+    description: 'All Supported Files',
+    accept: {
+      'application/pdf': ['.pdf'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/msword': ['.doc'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'application/vnd.ms-excel': ['.xls'],
+      'text/plain': ['.txt'],
+      'text/csv': ['.csv'],
+      'text/markdown': ['.md'],
+      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'],
+    },
+  },
+  { description: 'PDF Documents', accept: { 'application/pdf': ['.pdf'] } },
+  {
+    description: 'Word Documents',
+    accept: {
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/msword': ['.doc'],
+    },
+  },
+  {
+    description: 'Excel Spreadsheets',
+    accept: {
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'application/vnd.ms-excel': ['.xls'],
+    },
+  },
+  {
+    description: 'Text Files',
+    accept: { 'text/plain': ['.txt'], 'text/csv': ['.csv'], 'text/markdown': ['.md'] },
+  },
+  {
+    description: 'Images',
+    accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'] },
+  },
+];
+
+// Flat extension list for the <input> fallback — stays as one entry but at
+// least keeps the filter label short (no multi-hundred-char MIME strings).
+const ACCEPT_EXTENSIONS_STR =
+  '.pdf,.docx,.doc,.xlsx,.xls,.txt,.csv,.md,.png,.jpg,.jpeg,.gif,.bmp,.webp';
+
+// Quick lookup: which extensions are allowed (for client-side validation).
+const ALLOWED_EXTS = new Set(
+  ACCEPT_EXTENSIONS_STR.split(',').map((s) => s.slice(1))
+);
+
 const FILE_TYPE_ICONS = {
   pdf: '📄',
   docx: '📝',
@@ -41,6 +93,7 @@ export default function ChatInput({
   const [input, setInput] = useState('');
   const [files, setFiles] = useState([]);
   const textareaRef = useRef(null);
+  const fileInputRef = useRef(null); // Fallback <input> when showOpenFilePicker unavailable
 
   // Auto-resize textarea
   const resizeTextarea = useCallback(() => {
@@ -50,18 +103,78 @@ export default function ChatInput({
     }
   }, []);
 
-  const onDrop = useCallback((accepted, rejected) => {
-    const newFiles = accepted.map((f) => ({
+  // Shared file-processing logic (used by both dropzone and custom picker).
+  const addFiles = useCallback((newFiles) => {
+    const stamped = newFiles.map((f) => ({
       file: f,
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     }));
     setFiles((prev) => {
-      const combined = [...prev, ...newFiles];
+      const combined = [...prev, ...stamped];
       return combined.slice(0, MAX_FILES);
     });
   }, []);
 
-  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
+  const onDrop = useCallback((accepted, _rejected) => {
+    addFiles(accepted);
+  }, [addFiles]);
+
+  // Custom file picker: uses showOpenFilePicker with MULTIPLE type groups so
+  // that Windows' file-type dropdown shows separate entries (e.g. "PDF
+  // Documents", "Images"…) instead of one unreadable line.
+  const openFilePicker = useCallback(async () => {
+    if (isStreaming) return;
+
+    // Path 1 – File System Access API (Chrome / Edge)
+    if (typeof window !== 'undefined' && window.showOpenFilePicker) {
+      try {
+        const handles = await window.showOpenFilePicker({
+          multiple: true,
+          types: FILE_TYPE_GROUPS,
+        });
+        const fileObjs = await Promise.all(handles.map((h) => h.getFile()));
+
+        // Client-side validation (matching dropzone behaviour)
+        const valid = fileObjs.filter(
+          (f) => {
+            const ext = f.name?.split('.').pop()?.toLowerCase();
+            return ext && ALLOWED_EXTS.has(ext) && f.size <= MAX_FILE_SIZE;
+          }
+        ).slice(0, MAX_FILES);
+
+        if (valid.length > 0) addFiles(valid);
+        return;
+      } catch (err) {
+        // AbortError = user cancelled → silent
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        // SecurityError or anything else → fall back to <input>
+        console.warn('showOpenFilePicker failed, falling back to <input>:', err);
+      }
+    }
+
+    // Path 2 – fallback via hidden <input type="file">
+    if (fileInputRef.current) {
+      fileInputRef.current.value = null;
+      fileInputRef.current.click();
+    }
+  }, [isStreaming, addFiles]);
+
+  // Handler for the fallback <input>'s onChange event.
+  const handleFileInputChange = useCallback((e) => {
+    const selected = Array.from(e.target.files || []);
+    if (selected.length === 0) return;
+    const valid = selected
+      .filter((f) => {
+        const ext = f.name?.split('.').pop()?.toLowerCase();
+        return ext && ALLOWED_EXTS.has(ext) && f.size <= MAX_FILE_SIZE;
+      })
+      .slice(0, MAX_FILES);
+    if (valid.length > 0) addFiles(valid);
+    // Reset so the same file can be picked again
+    e.target.value = null;
+  }, [addFiles]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
       'application/pdf': ['.pdf'],
@@ -168,13 +281,24 @@ export default function ChatInput({
             : 'border-transparent hover:border-base-300'
         }`}
       >
-        <input {...getInputProps()} />
+        <input {...getInputProps()} accept={ACCEPT_EXTENSIONS_STR} />
+
+        {/* Fallback file input when showOpenFilePicker is unavailable */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ACCEPT_EXTENSIONS_STR}
+          onChange={handleFileInputChange}
+          multiple
+          className="hidden"
+          tabIndex={-1}
+        />
 
         {/* Attach file button */}
         <button
           type="button"
           className="btn btn-ghost btn-circle btn-sm flex-shrink-0"
-          onClick={open}
+          onClick={openFilePicker}
           disabled={isStreaming}
           title={hasActiveConversation ? 'Attach files' : 'Send a message first to start a conversation'}
         >
