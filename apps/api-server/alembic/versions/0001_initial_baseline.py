@@ -1,4 +1,4 @@
-"""Initial baseline — all existing models.
+"""Initial baseline — all existing models including file upload support.
 
 Revision ID: 0001
 Revises: None
@@ -133,6 +133,13 @@ def upgrade() -> None:
         ),
         sa.Column("role", sa.String(50), nullable=False),
         sa.Column("content", sa.Text, nullable=False),
+        sa.Column(
+            "content_parts",
+            postgresql.JSONB,
+            nullable=True,
+            server_default=None,
+            comment="Multi-part content following OpenAI content part format",
+        ),
         sa.Column("token_count", sa.Integer, nullable=True),
         sa.Column("model", sa.String(128), nullable=True),
         sa.Column(
@@ -148,8 +155,53 @@ def upgrade() -> None:
         op.f("ix_messages_conversation_id"), "messages", ["conversation_id"]
     )
 
+    op.create_table(
+        "attachments",
+        sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("message_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("conversation_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("file_name", sa.String(512), nullable=False),
+        sa.Column("file_size", sa.Integer, nullable=False),
+        sa.Column("mime_type", sa.String(128), nullable=False),
+        sa.Column("file_type", sa.String(32), nullable=False),
+        sa.Column("storage_bucket", sa.String(128), nullable=False),
+        sa.Column("storage_object_key", sa.String(1024), nullable=False),
+        sa.Column("parsed_text", sa.Text, nullable=True),
+        sa.Column("parsed_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("parse_error", sa.Text, nullable=True),
+        sa.Column(
+            "storage_status",
+            sa.String(32),
+            nullable=False,
+            server_default="pending",
+            comment="pending / completed / failed",
+        ),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+            nullable=True,
+        ),
+        sa.ForeignKeyConstraint(
+            ["conversation_id"], ["conversations.id"], ondelete="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["message_id"], ["messages.id"], ondelete="SET NULL"
+        ),
+        sa.ForeignKeyConstraint(
+            ["user_id"], ["users.id"], ondelete="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(op.f("ix_attachments_conversation_id"), "attachments", ["conversation_id"])
+    op.create_index(op.f("ix_attachments_file_type"), "attachments", ["file_type"])
+    op.create_index(op.f("ix_attachments_message_id"), "attachments", ["message_id"])
+    op.create_index(op.f("ix_attachments_user_id"), "attachments", ["user_id"])
+
 
 def downgrade() -> None:
+    op.drop_table("attachments")
     op.drop_table("messages")
     op.drop_table("audit_logs")
     op.drop_table("api_keys")
