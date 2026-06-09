@@ -3,8 +3,8 @@
 help:           ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-dev-infra:      ## Start Postgres, Keycloak, LiteLLM (Docker)
-	DOCKER_BUILDKIT=0 docker compose -f infra/docker-compose.yml up -d postgres
+dev-infra:      ## Start Postgres, Keycloak, LiteLLM, MinIO (Docker)
+	DOCKER_BUILDKIT=0 docker compose -f infra/docker-compose.yml up -d postgres minio
 	@sleep 3
 	@docker exec llm-dlp-postgres psql -U llmuser -d postgres -c "CREATE DATABASE keycloak;" 2>/dev/null || echo "  keycloak DB already exists"
 	DOCKER_BUILDKIT=0 docker compose -f infra/docker-compose.yml up -d keycloak litellm

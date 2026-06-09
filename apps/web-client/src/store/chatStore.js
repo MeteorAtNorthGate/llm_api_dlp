@@ -1,13 +1,14 @@
-/** Chat store — conversations and active chat state. */
+/** Chat store — conversations, active chat state, and file uploads. */
 
 import { create } from 'zustand';
-import { chatApi } from '../services/api';
+import { chatApi, filesApi } from '../services/api';
 
 export const useChatStore = create((set, get) => ({
   conversations: [],
   activeConversationId: null,
   messages: [],
   isStreaming: false,
+  isUploading: false,
   streamContent: '',
   availableModels: [],
   selectedModel: 'deepseek-v4-flash',
@@ -18,7 +19,6 @@ export const useChatStore = create((set, get) => ({
       const data = await chatApi.listModels();
       const models = data.models || [];
       set({ availableModels: models });
-      // Auto-select first model if none selected or current selection not available
       const { selectedModel } = get();
       if (models.length > 0 && !models.find((m) => m.name === selectedModel)) {
         set({ selectedModel: models[0].name });
@@ -44,7 +44,12 @@ export const useChatStore = create((set, get) => ({
   loadConversation: async (id) => {
     try {
       const conv = await chatApi.getConversation(id);
-      set({ messages: conv.messages, activeConversationId: id });
+      // Map API response to include attachments field
+      const messages = (conv.messages || []).map((m) => ({
+        ...m,
+        attachments: m.attachments || [],
+      }));
+      set({ messages, activeConversationId: id });
       return conv;
     } catch (err) {
       console.error('Failed to load conversation', err);
@@ -59,33 +64,77 @@ export const useChatStore = create((set, get) => ({
       messages: [],
       streamContent: '',
       isStreaming: false,
+      isUploading: false,
     });
   },
 
-  // Send a message and stream the response
-  sendMessage: async (content) => {
+  // Send a message with optional file attachments
+  sendMessage: async (content, files = []) => {
     const { activeConversationId, messages, selectedModel } = get();
     const model = selectedModel || 'deepseek-chat';
 
-    // Add user message immediately
-    const userMsg = { role: 'user', content, id: Date.now().toString() };
+    const convId = activeConversationId;
+
+    // V1: files require an existing conversation. If no active conversation,
+    // ignore files and just send the text (they'll be able to attach on subsequent messages)
+    const effectiveFiles = convId ? files : [];
+
+    // Upload files (if any)
+    let contentParts = null;
+    let uploadedAttachments = [];
+
+    if (effectiveFiles.length > 0) {
+      set({ isUploading: true });
+      contentParts = [{ type: 'text', text: content }];
+
+      for (const file of effectiveFiles) {
+        try {
+          const attachment = await filesApi.upload(file, convId);
+          contentParts.push({
+            type: 'file',
+            file_reference: { attachment_id: attachment.id },
+          });
+          uploadedAttachments.push(attachment);
+        } catch (err) {
+          console.error('Failed to upload file', file.name, err);
+          contentParts.push({
+            type: 'text',
+            text: `\n[Failed to upload: ${file.name}]`,
+          });
+        }
+      }
+      set({ isUploading: false });
+    }
+
+    // Add user message
+    const userMsg = {
+      role: 'user',
+      content,
+      content_parts: contentParts,
+      attachments: uploadedAttachments,
+      id: Date.now().toString(),
+    };
     const updatedMessages = [...messages, userMsg];
     set({ messages: updatedMessages, isStreaming: true, streamContent: '' });
 
     try {
       const payload = {
         model,
-        messages: updatedMessages.map((m) => ({ role: m.role, content: m.content })),
-        conversation_id: activeConversationId,
+        messages: updatedMessages.map((m) => ({
+          role: m.role,
+          content: m.content || '',
+          content_parts: m.content_parts || undefined,
+        })),
+        conversation_id: convId,
         stream: true,
       };
 
       const response = await chatApi.completions(payload);
 
-      // Get conversation ID from headers (for new conversations)
-      const convId = response.headers.get('X-Conversation-Id');
-      if (convId && !activeConversationId) {
-        set({ activeConversationId: convId });
+      // Update conversation ID from headers (for new conversations)
+      const newConvId = response.headers.get('X-Conversation-Id');
+      if (newConvId && !convId) {
+        set({ activeConversationId: newConvId });
       }
 
       // Stream reader
@@ -140,11 +189,14 @@ export const useChatStore = create((set, get) => ({
     } catch (err) {
       console.error('Failed to send message', err);
       set({ isStreaming: false, streamContent: '' });
-      // Add error message
       set((state) => ({
         messages: [
           ...state.messages,
-          { role: 'assistant', content: 'Sorry, an error occurred. Please try again.', id: Date.now().toString() },
+          {
+            role: 'assistant',
+            content: 'Sorry, an error occurred. Please try again.',
+            id: Date.now().toString(),
+          },
         ],
       }));
     }

@@ -9,7 +9,12 @@ from pydantic import BaseModel, Field
 class ChatMessage(BaseModel):
     """A single message in the chat completion request."""
     role: str  # "user", "assistant", "system"
-    content: str
+    content: str = ""
+    content_parts: list[dict] | None = Field(
+        default=None,
+        description="Multi-part content (OpenAI format). "
+        "Example: [{'type':'text','text':'...'},{'type':'file','file_reference':{'attachment_id':'...'}}]",
+    )
 
 
 class ChatCompletionRequest(BaseModel):
@@ -35,11 +40,27 @@ class ConversationSummary(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class AttachmentDetail(BaseModel):
+    """Attachment metadata returned to the frontend."""
+    id: UUID
+    file_name: str
+    file_size: int
+    mime_type: str
+    file_type: str
+    storage_status: str
+    parse_error: str | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class MessageDetail(BaseModel):
     """A single message returned in conversation detail."""
     id: UUID
     role: str
     content: str
+    content_parts: dict | None = None
+    attachments: list[AttachmentDetail] = []
     token_count: int | None = None
     model: str | None = None
     created_at: datetime

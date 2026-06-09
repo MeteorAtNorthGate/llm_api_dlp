@@ -8,7 +8,17 @@ Internal enterprise LLM service portal providing a ChatGPT-like chat interface a
 Browser → React (Vite) → FastAPI → LiteLLM Proxy (DLP) → External LLMs
                    ↓                    ↓
               Keycloak (OIDC)      PostgreSQL
+                   ↓                    ↓
+              MinIO (S3)           File Attachments
 ```
+
+### Chat Features
+- **Streaming chat** with SSE (Server-Sent Events)
+- **File upload** via drag-and-drop (PDF, DOCX, XLSX, TXT, CSV, images)
+- **Document parsing** with `unstructured` library — parsed text is injected into the LLM context
+- **DLP data masking** — sensitive data (credit cards, SSN, phone, email, etc.) is masked before reaching external LLMs
+- **Conversation history** — all messages and file attachments persist across sessions
+- **API key self-service** — developers can generate and manage their own LiteLLM virtual keys
 
 ## Prerequisites
 
@@ -26,6 +36,7 @@ Browser → React (Vite) → FastAPI → LiteLLM Proxy (DLP) → External LLMs
 | PostgreSQL | `postgres:17-alpine` | 5432 | Requires databases `llm_dlp` and `keycloak` |
 | Keycloak | `quay.io/keycloak/keycloak:26.6.3` | 8080 | Admin: `admin/admin`. Realm auto-imported on first start. |
 | LiteLLM | `ghcr.io/berriai/litellm:v1.87.1` | 4000 | LLM gateway with DLP callbacks |
+| MinIO | `quay.io/minio/minio:latest` | 9000 (API), 9001 (Console) | S3-compatible object storage for file attachments |
 
 ### Cloud-only services (already running on server)
 
@@ -72,6 +83,8 @@ Then open **http://localhost:5173** in browser. Login redirects to Keycloak at `
 | Web Client | 5173  | http://localhost:5173        |
 | API Server | 8000  | http://localhost:8000/docs   |
 | LiteLLM    | 4000  | http://localhost:4000        |
+| MinIO API  | 9000  | http://localhost:9000        |
+| MinIO Console | 9001 | http://localhost:9001     |
 | Keycloak   | 8080  | http://localhost:8080        |
 | PostgreSQL | 5432  | localhost:5432               |
 
@@ -111,12 +124,17 @@ NPM proxy rule: `http` → `llm-dlp-web:80`
 ```
 llm_api_dlp/
 ├── apps/
-│   ├── web-client/     # React + Vite + TailwindCSS frontend
+│   ├── web-client/     # React + Vite + TailwindCSS + DaisyUI frontend
 │   ├── api-server/     # FastAPI backend
+│   │   └── app/
+│   │       ├── api/         # REST endpoints (chat, files, keys, admin)
+│   │       ├── db/models/   # SQLAlchemy ORM (User, Conversation, Message, Attachment, etc.)
+│   │       ├── services/    # Business logic (DLP masking, MinIO storage, doc parsing)
+│   │       └── schemas/     # Pydantic request/response models
 │   └── dlp-plugin/     # LiteLLM DLP data masking hooks
 ├── infra/
-│   ├── docker-compose.yml       # Local dev & build
-│   ├── docker-compose.cloud.yml # Cloud deployment (no build, npm_default net)
+│   ├── docker-compose.yml       # Local dev & build (postgres, keycloak, litellm, minio)
+│   ├── docker-compose.cloud.yml # Cloud deployment (npm_default network)
 │   ├── .env.cloud               # Cloud secrets (not in git)
 │   ├── litellm/                 # LiteLLM model routing config
 │   └── keycloak/                # Keycloak realm import config
@@ -131,7 +149,7 @@ llm_api_dlp/
 
 | Command | Description |
 |---|---|
-| `make dev-infra` | Start Postgres, Keycloak, LiteLLM containers |
+| `make dev-infra` | Start Postgres, Keycloak, LiteLLM, MinIO containers |
 | `make dev-api` | Start FastAPI dev server (hot-reload, port 8000) |
 | `make dev-web` | Start Vite dev server (HMR, port 5173) |
 | `make build` | Build all Docker images locally |

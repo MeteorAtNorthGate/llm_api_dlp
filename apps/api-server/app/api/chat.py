@@ -12,16 +12,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.security import get_current_user
+from app.db.models.attachment import Attachment
 from app.db.models.conversation import Conversation
 from app.db.models.message import Message
 from app.db.models.user import User
 from app.db.session import get_session
 from app.schemas.chat import (
+    AttachmentDetail,
     ChatCompletionRequest,
     ConversationDetail,
     ConversationSummary,
     MessageDetail,
 )
+from app.services.dlp_service import apply_masking
+from app.services.file_service import delete_file_sync, delete_prefix_sync
+from app.services.parse_service import build_injection_text
 
 router = APIRouter()
 
@@ -127,14 +132,65 @@ async def chat_completions(
                 conversation_id=conversation.id,
                 role=msg.role,
                 content=msg.content,
+                content_parts=msg.content_parts,
             )
             session.add(db_msg)
     await session.commit()
 
-    # Build LiteLLM request payload
+    # Build LiteLLM-compatible messages with file content injected and DLP applied
+    litellm_messages = []
+    for msg in body.messages:
+        if msg.content_parts and msg.role == "user":
+            # Process multi-part content — inject parsed file text
+            text_parts = []
+            for part in msg.content_parts:
+                if part.get("type") == "text":
+                    text_parts.append(part.get("text", ""))
+                elif part.get("type") == "file":
+                    ref = part.get("file_reference", {})
+                    att_id = ref.get("attachment_id")
+                    if att_id:
+                        att_result = await session.execute(
+                            select(Attachment).where(
+                                Attachment.id == uuid.UUID(att_id)
+                            )
+                        )
+                        attachment = att_result.scalar_one_or_none()
+                        if attachment and attachment.parsed_text and attachment.storage_status == "completed":
+                            injection = build_injection_text(
+                                attachment.parsed_text, attachment.file_name
+                            )
+                            text_parts.append(injection)
+                            # Link attachment to the about-to-be-created message
+                            attachment.message_id = db_msg.id
+
+            combined_text = "\n".join(text_parts) if text_parts else msg.content
+
+            # Apply DLP masking
+            mask_result = apply_masking(combined_text)
+            litellm_messages.append({
+                "role": msg.role,
+                "content": mask_result.masked_text,
+            })
+        elif msg.role in ("user", "system"):
+            # Standard text message with DLP
+            mask_result = apply_masking(msg.content)
+            litellm_messages.append({
+                "role": msg.role,
+                "content": mask_result.masked_text,
+            })
+        else:
+            # Assistant messages — no DLP needed (they're history context)
+            litellm_messages.append({
+                "role": msg.role,
+                "content": msg.content,
+            })
+
+    await session.commit()
+    # Build LiteLLM request payload using DLP-masked + file-injected messages
     litellm_payload = {
         "model": body.model,
-        "messages": [m.model_dump() for m in body.messages],
+        "messages": litellm_messages,
         "stream": body.stream,
         "temperature": body.temperature,
     }
@@ -336,6 +392,17 @@ async def get_conversation(
     )
     messages = messages_result.scalars().all()
 
+    # Load attachments for all messages in this conversation
+    attachment_result = await session.execute(
+        select(Attachment).where(
+            Attachment.conversation_id == conversation.id
+        )
+    )
+    attachments_by_message: dict[uuid.UUID, list[Attachment]] = {}
+    for att in attachment_result.scalars().all():
+        if att.message_id:
+            attachments_by_message.setdefault(att.message_id, []).append(att)
+
     return ConversationDetail(
         id=conversation.id,
         title=conversation.title,
@@ -344,6 +411,11 @@ async def get_conversation(
                 id=m.id,
                 role=m.role,
                 content=m.content,
+                content_parts=m.content_parts,
+                attachments=[
+                    AttachmentDetail.model_validate(att)
+                    for att in attachments_by_message.get(m.id, [])
+                ],
                 token_count=m.token_count,
                 model=m.model,
                 created_at=m.created_at,
@@ -377,14 +449,23 @@ async def delete_conversation(
             detail="Conversation not found",
         )
 
-    # Delete messages first
-    await session.execute(
+    # Clean up MinIO files for this conversation
+    import asyncio
+
+    att_result = await session.execute(
+        select(Attachment).where(Attachment.conversation_id == conversation.id)
+    )
+    for att in att_result.scalars().all():
+        if att.storage_object_key:
+            await asyncio.to_thread(
+                delete_file_sync, att.storage_bucket, att.storage_object_key
+            )
+
+    # Delete messages first (attachments cascade via FK ondelete SET NULL)
+    messages_result = await session.execute(
         select(Message).where(Message.conversation_id == conversation.id)
     )
-    messages = (await session.execute(
-        select(Message).where(Message.conversation_id == conversation.id)
-    )).scalars().all()
-    for msg in messages:
+    for msg in messages_result.scalars().all():
         await session.delete(msg)
 
     await session.delete(conversation)

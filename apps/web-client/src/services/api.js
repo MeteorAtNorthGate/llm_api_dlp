@@ -70,6 +70,26 @@ export const keysApi = {
   revoke: (id) => api.delete(`keys/${id}`),
 };
 
+// ── Files ─────────────────────────────────────────────
+
+export const filesApi = {
+  upload: (file, conversationId) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('conversation_id', conversationId);
+    return api.post('files/upload', {
+      body: formData,
+      timeout: 120000,  // 2 min for upload + parsing
+    }).json();
+  },
+
+  get: (id) =>
+    api.get(`files/${id}`).json(),
+
+  delete: (id) =>
+    api.delete(`files/${id}`),
+};
+
 // ── Admin (System) ────────────────────────────────────
 
 export const adminApi = {

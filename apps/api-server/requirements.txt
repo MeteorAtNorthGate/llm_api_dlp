@@ -9,3 +9,6 @@ pydantic>=2.10.0
 pydantic-settings>=2.8.0
 python-multipart>=0.0.20
 structlog>=25.1.0
+minio>=7.2.0,<8.0.0
+unstructured[pdf,docx,xlsx]>=0.16.0,<0.17.0
+python-magic>=0.4.27

@@ -62,6 +62,25 @@ services:
       - --config
       - /app/config.yaml
 
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: llm-dlp-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   api-server:
     build:
       context: ../apps/api-server
@@ -77,6 +96,12 @@ services:
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-change-me}
       LITELLM_BASE_URL: http://litellm:4000
       LITELLM_MASTER_KEY: sk-master-key-change-me
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: llm-dlp-files
+      MINIO_SECURE: "false"
+      MAX_FILE_SIZE_MB: "20"
       APP_SECRET_KEY: ${APP_SECRET_KEY:-dev-secret-key-change-me}
       APP_LOG_LEVEL: DEBUG
       CORS_ORIGINS: http://localhost:5173,http://localhost:3000
@@ -84,6 +109,8 @@ services:
       - "8000:8000"
     depends_on:
       postgres:
+        condition: service_healthy
+      minio:
         condition: service_healthy
       keycloak:
         condition: service_started
@@ -102,3 +129,4 @@ services:
 
 volumes:
   pgdata:
+  minio_data:

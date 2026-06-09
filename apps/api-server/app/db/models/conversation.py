@@ -34,6 +34,10 @@ class Conversation(Base):
         "Message", back_populates="conversation", lazy="dynamic",
         order_by="Message.created_at"
     )
+    attachments = relationship(
+        "Attachment", back_populates="conversation", lazy="dynamic",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return f"<Conversation {self.title[:30]}>"

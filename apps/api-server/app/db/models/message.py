@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -23,6 +23,13 @@ class Message(Base):
         String(50), nullable=False
     )  # "user", "assistant", "system"
     content: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # Structured multi-part content (OpenAI content part format)
+    # Example: [{"type":"text","text":"..."},{"type":"file","file_reference":{"attachment_id":"..."}}]
+    # NULL for legacy messages — fall back to `content` field
+    content_parts: Mapped[dict | None] = mapped_column(
+        JSONB, nullable=True, default=None
+    )
 
     # Token usage tracking (for DLP verification — masked vs unmasked should match)
     token_count: Mapped[int | None] = mapped_column(nullable=True)

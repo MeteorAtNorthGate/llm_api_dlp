@@ -31,6 +31,17 @@ class Settings(BaseSettings):
     APP_LOG_LEVEL: str = "DEBUG"
     CORS_ORIGINS: str = "http://localhost:5173"
 
+    # MinIO / Object Storage
+    MINIO_ENDPOINT: str = "localhost:9000"
+    MINIO_ACCESS_KEY: str = "minioadmin"
+    MINIO_SECRET_KEY: str = "minioadmin"
+    MINIO_BUCKET: str = "llm-dlp-files"
+    MINIO_SECURE: bool = False
+
+    # File upload limits
+    MAX_FILE_SIZE_MB: int = 20
+    MAX_FILES_PER_MESSAGE: int = 5
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]

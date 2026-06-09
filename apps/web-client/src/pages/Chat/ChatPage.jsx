@@ -13,6 +13,7 @@ export default function ChatPage() {
     streamContent,
     availableModels,
     selectedModel,
+    activeConversationId,
     sendMessage,
     loadModels,
     setSelectedModel,
@@ -29,8 +30,8 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamContent]);
 
-  const handleSend = (content) => {
-    sendMessage(content);
+  const handleSend = (content, files) => {
+    sendMessage(content, files);
   };
 
   return (
@@ -84,6 +85,7 @@ export default function ChatPage() {
           models={availableModels}
           selectedModel={selectedModel}
           onModelChange={setSelectedModel}
+          hasActiveConversation={!!activeConversationId}
         />
       </div>
     </Layout>
