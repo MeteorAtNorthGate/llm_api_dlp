@@ -10,14 +10,24 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 
+# Apply APP_LOG_LEVEL to the entire app package so that info/debug
+# messages (e.g. default model seeding) are visible at startup.
+logging.getLogger("app").setLevel(settings.APP_LOG_LEVEL.upper())
+
 logger = logging.getLogger(__name__)
 
-# ── Default model definition ──────────────────────────────────────────
-# This model is seeded into LiteLLM's database on first startup so it
-# appears in the model list and can be edited / deleted via the admin UI.
+# ── System utility model ───────────────────────────────────────────────
+# Seeded on first startup.  Used by the platform for lightweight tasks
+# (e.g. conversation title generation from first user message).
+#
+# It CANNOT be deleted via the admin UI — the delete endpoint checks
+# against SYSTEM_UTILITY_MODEL_NAME.  Admins should edit it to set the
+# API key and optionally switch provider / model.
+
+SYSTEM_UTILITY_MODEL_NAME = "system-utility"
 
 DEFAULT_MODEL = {
-    "model_name": "deepseek-v4-flash",
+    "model_name": SYSTEM_UTILITY_MODEL_NAME,
     "litellm_params": {
         "model": "deepseek/deepseek-v4-flash",
         "api_base": "https://api.deepseek.com",
@@ -25,7 +35,8 @@ DEFAULT_MODEL = {
         "tpm": 100000,
     },
     "model_info": {
-        "description": "Default DeepSeek model — managed via admin UI",
+        "description": "System utility model — used for title generation and other lightweight tasks",
+        "is_default": True,
     },
 }
 
@@ -49,10 +60,10 @@ async def _seed_default_model(client: httpx.AsyncClient) -> None:
     except Exception:
         logger.warning("Could not query LiteLLM models, will attempt create anyway.")
 
-    # Create the default model
+    # Create the default model (api_key may be empty — admin fills it via UI)
     try:
         litellm_params = dict(DEFAULT_MODEL["litellm_params"])
-        litellm_params["api_key"] = settings.DEEPSEEK_API_KEY
+        litellm_params["api_key"] = settings.DEEPSEEK_API_KEY or ""
 
         resp = await client.post(
             f"{settings.LITELLM_BASE_URL}/model/new",
@@ -80,28 +91,44 @@ async def _seed_default_model(client: httpx.AsyncClient) -> None:
 
 
 async def _seed_with_retry(max_retries: int = 30, interval: int = 2) -> None:
-    """Retry seeding until LiteLLM is reachable."""
+    """Retry seeding until LiteLLM is reachable.
+
+    The default model is always created (with an empty api_key if
+    DEEPSEEK_API_KEY is not configured).  The admin fills in the key
+    later via the System Admin page.
+    """
     if not settings.DEEPSEEK_API_KEY:
         logger.info(
-            "DEEPSEEK_API_KEY not set — skipping default model seed. "
-            "Add a model manually via the System Admin page."
+            "DEEPSEEK_API_KEY not set — default model will be seeded "
+            "with an empty api_key. Edit it via the System Admin page."
         )
-        return
 
     async with httpx.AsyncClient(timeout=15.0) as client:
         for attempt in range(1, max_retries + 1):
             try:
                 await _seed_default_model(client)
                 return
-            except httpx.ConnectError:
+            except httpx.RequestError as exc:
+                # Network-level error (ConnectError, ReadError, TimeoutException,
+                # RemoteProtocolError, etc.) — LiteLLM may not be ready yet.
                 logger.debug(
-                    "LiteLLM not reachable (attempt %d/%d), retrying in %ds…",
+                    "LiteLLM not reachable (attempt %d/%d, %s), retrying in %ds…",
                     attempt,
                     max_retries,
+                    type(exc).__name__,
                     interval,
                 )
                 if attempt < max_retries:
                     await asyncio.sleep(interval)
+            except Exception as exc:
+                # Truly unexpected error — log and don't retry
+                logger.warning(
+                    "Unexpected error seeding default model (attempt %d/%d): %s",
+                    attempt,
+                    max_retries,
+                    exc,
+                )
+                return
         logger.warning(
             "LiteLLM still not reachable after %d attempts — default model was not seeded.",
             max_retries,
@@ -119,11 +146,13 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
 
     # Seed default model into LiteLLM DB (non-blocking — runs in background)
-    asyncio.create_task(_seed_with_retry())
+    seed_task = asyncio.create_task(_seed_with_retry())
 
     yield
 
-    # Shutdown: dispose engine
+    # Shutdown: cancel pending seed task, then dispose engine
+    if not seed_task.done():
+        seed_task.cancel()
     await engine.dispose()
 
 

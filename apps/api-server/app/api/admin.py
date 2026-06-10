@@ -14,6 +14,7 @@ from app.core.config import settings
 from app.core.security import get_current_user
 from app.db.models.platform_setting import PlatformSetting
 from app.db.session import get_session
+from app.main import SYSTEM_UTILITY_MODEL_NAME
 
 router = APIRouter()
 
@@ -45,7 +46,7 @@ PROVIDER_PREFIX: dict[str, str] = {
 PROVIDER_DEFAULT_BASE: dict[str, str] = {
     "openai": "https://api.openai.com/v1",
     "qwen": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-    "deepseek": "https://api.deepseek.com/v1",
+    "deepseek": "https://api.deepseek.com",
     "deepseek_for_cc": "https://api.deepseek.com/anthropic",
     "mistral": "https://api.mistral.ai/v1",
     "groq": "https://api.groq.com/openai/v1",
@@ -292,8 +293,32 @@ async def delete_model(
     model_id: str,
     user: dict = Depends(_require_admin),
 ):
-    """Delete a model configuration."""
+    """Delete a model configuration.
+
+    The system utility model cannot be deleted — it must remain as a
+    placeholder that admins can edit to fill in their own API key /
+    provider / model.
+    """
+    # Resolve model_id → model_name so we can guard the default model.
+    # LiteLLM's /model/info returns every model; we look up the entry
+    # whose model_info.id (or model_name) matches the requested model_id.
     async with httpx.AsyncClient(timeout=15.0) as client:
+        info_resp = await client.get(
+            f"{settings.LITELLM_BASE_URL}/model/info",
+            headers={"Authorization": f"Bearer {settings.LITELLM_MASTER_KEY}"},
+        )
+        if info_resp.status_code == 200:
+            for m in info_resp.json().get("data", []):
+                mid = (m.get("model_info") or {}).get("id") or m.get("model_name", "")
+                if mid == model_id and m.get("model_name") == SYSTEM_UTILITY_MODEL_NAME:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=(
+                            f"The system utility model '{SYSTEM_UTILITY_MODEL_NAME}' cannot be deleted. "
+                            "You can edit it to update the API key, provider, or model."
+                        ),
+                    )
+
         resp = await client.post(
             f"{settings.LITELLM_BASE_URL}/model/delete",
             json={"id": model_id},
