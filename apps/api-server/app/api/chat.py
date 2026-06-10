@@ -125,6 +125,12 @@ async def chat_completions(
         await session.commit()
         await session.refresh(conversation)
 
+    # Rename placeholder when the first real message arrives
+    if conversation.title == "New Conversation":
+        user_msgs = [m for m in body.messages if m.role == "user"]
+        if user_msgs:
+            conversation.title = user_msgs[-1].content[:50]
+
     # Determine how many user messages already exist in this conversation.
     # (The frontend sends the full history each turn — we only persist NEW ones.)
     if body.conversation_id:
@@ -350,10 +356,33 @@ async def create_conversation(
     """Create an empty placeholder conversation for the chat UI.
 
     Called when the user enters the chat page or clicks "New Chat".
-    This ensures an activeConversationId is always available so that
-    file uploads work from the very first message.
+    Reuses an existing empty "New Conversation" if one already exists,
+    so page refreshes / redirects don't pile up placeholder rows.
     """
     user = await _get_or_create_user(session, user_claims)
+
+    # Reuse an existing empty placeholder instead of creating duplicates
+    existing = await session.execute(
+        select(Conversation)
+        .outerjoin(Message, Conversation.id == Message.conversation_id)
+        .where(
+            Conversation.user_id == user.id,
+            Conversation.title == "New Conversation",
+        )
+        .group_by(Conversation.id)
+        .having(func.count(Message.id) == 0)
+        .order_by(Conversation.created_at.desc())
+        .limit(1)
+    )
+    placeholder = existing.scalar_one_or_none()
+    if placeholder:
+        return ConversationSummary(
+            id=placeholder.id,
+            title=placeholder.title,
+            created_at=placeholder.created_at,
+            updated_at=placeholder.updated_at,
+            message_count=0,
+        )
 
     conversation = Conversation(user_id=user.id, title="New Conversation")
     session.add(conversation)
