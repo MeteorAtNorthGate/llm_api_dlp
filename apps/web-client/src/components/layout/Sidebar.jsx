@@ -30,7 +30,7 @@ export default function Sidebar() {
           {conversations.map((conv) => (
             <li key={conv.id}>
               <a
-                className={`flex justify-between items-start py-2 ${
+                className={`group flex items-start py-2 pr-8 relative ${
                   activeConversationId === conv.id ? 'active' : ''
                 }`}
                 onClick={() => loadConversation(conv.id)}
@@ -42,7 +42,7 @@ export default function Sidebar() {
                   </div>
                 </div>
                 <button
-                  className="btn btn-ghost btn-xs text-error opacity-0 hover:opacity-100 group-hover:opacity-100"
+                  className="absolute right-1 top-1 btn btn-ghost btn-xs btn-circle text-error opacity-0 group-hover:opacity-100 transition-opacity"
                   onClick={(e) => {
                     e.stopPropagation();
                     deleteConversation(conv.id);
