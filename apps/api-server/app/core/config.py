@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     KEYCLOAK_URL: str = "http://localhost:8080"
     KEYCLOAK_REALM: str = "llm-dlp"
     KEYCLOAK_CLIENT_ID: str = "llm-dlp-web"
+    KEYCLOAK_CLIENT_ID_LOCAL: str = "llm-dlp-web-local"
     KEYCLOAK_CLIENT_SECRET: str = "change-me"
 
     # LiteLLM

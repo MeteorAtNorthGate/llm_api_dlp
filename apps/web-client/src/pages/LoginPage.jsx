@@ -1,4 +1,4 @@
-/** LoginPage — handles Keycloak OIDC redirect flow. */
+/** LoginPage — auth source selector + Keycloak OIDC redirect flow. */
 
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [error, setError] = useState(null);
+  const [authSource, setAuthSource] = useState('domain');
 
   // Guard against React StrictMode double-mounting in development
   const handledRef = useRef(false);
@@ -18,7 +19,6 @@ export default function LoginPage() {
   const sessionExpired = searchParams.get('session_expired') === 'true';
 
   useEffect(() => {
-    // If we already processed the auth code or redirect, skip
     if (handledRef.current) return;
 
     const code = searchParams.get('code');
@@ -31,7 +31,6 @@ export default function LoginPage() {
 
       if (!codeVerifier) {
         // PKCE verifier was already consumed (e.g., by StrictMode re-run)
-        // The first invocation already handled the login — just wait
         return;
       }
 
@@ -39,21 +38,26 @@ export default function LoginPage() {
         setError('Login failed. Please try again.');
         console.error('Login error:', err);
       });
-    } else if (!isLoading && !isAuthenticated) {
-      // Don't auto-redirect to Keycloak after logout or session expiry —
-      // that would re-authenticate the user via the existing SSO session.
-      if (!loggedOut && !sessionExpired) {
-        handledRef.current = true;
-        redirectToLogin();
-      }
     }
-  }, [isLoading, isAuthenticated, login, redirectToLogin, searchParams, loggedOut, sessionExpired]);
+  }, [isLoading, isAuthenticated, login, searchParams]);
 
   useEffect(() => {
     if (isAuthenticated) {
       navigate('/', { replace: true });
     }
   }, [isAuthenticated, navigate]);
+
+  const handleLogin = () => {
+    handledRef.current = true;
+    redirectToLogin(authSource);
+  };
+
+  // Allow Enter key to trigger login
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleLogin();
+    }
+  };
 
   // ── Logged-out state ──────────────────────────────────
 
@@ -62,12 +66,14 @@ export default function LoginPage() {
       ? 'Your session has expired. Please log in again.'
       : 'You have been logged out.';
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center space-y-6">
-          <h1 className="text-2xl font-semibold">{message}</h1>
-          <button className="btn btn-primary" onClick={redirectToLogin}>
-            Login
-          </button>
+      <div className="flex items-center justify-center min-h-screen bg-base-200">
+        <div className="card w-96 bg-base-100 shadow-xl">
+          <div className="card-body items-center text-center space-y-4">
+            <h1 className="text-2xl font-semibold">{message}</h1>
+            <button className="btn btn-primary" onClick={handleLogin}>
+              Login
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -77,31 +83,76 @@ export default function LoginPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="alert alert-error shadow-lg max-w-md">
-            <div>
+      <div className="flex items-center justify-center min-h-screen bg-base-200">
+        <div className="card w-96 bg-base-100 shadow-xl">
+          <div className="card-body items-center text-center space-y-4">
+            <div className="alert alert-error shadow-lg">
               <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <span>{error}</span>
             </div>
+            <button className="btn btn-primary" onClick={handleLogin}>
+              Try Again
+            </button>
           </div>
-          <button className="btn btn-primary mt-4" onClick={redirectToLogin}>
-            Try Again
-          </button>
         </div>
       </div>
     );
   }
 
-  // ── Loading state ─────────────────────────────────────
+  // ── Auth source selector (landing page, no code in URL) ──
+
+  const isCallback = !!searchParams.get('code');
+
+  if (!isLoading && !isAuthenticated && !isCallback && !loggedOut && !sessionExpired) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-base-200" onKeyDown={handleKeyDown}>
+        <div className="card w-96 bg-base-100 shadow-xl">
+          <div className="card-body items-center text-center space-y-5">
+            <h1 className="text-2xl font-bold">LLM Platform</h1>
+            <p className="text-base-content/70">Select authentication method</p>
+
+            {/* Auth Source Dropdown */}
+            <div className="form-control w-full max-w-xs">
+              <select
+                className="select select-bordered w-full"
+                value={authSource}
+                onChange={(e) => setAuthSource(e.target.value)}
+              >
+                <option value="domain">
+                  域控登录 (Windows AD)
+                </option>
+                <option value="local">
+                  本地账号 (Local)
+                </option>
+              </select>
+            </div>
+
+            <button className="btn btn-primary w-full" onClick={handleLogin}>
+              Login
+            </button>
+
+            <p className="text-xs text-base-content/50">
+              {authSource === 'domain'
+                ? 'Use your Windows domain account (same as Windows login)'
+                : 'Use your local platform account'}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Loading state (code exchange or initial redirect) ──
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
+    <div className="flex items-center justify-center min-h-screen bg-base-200">
       <div className="text-center space-y-4">
         <Spinner size="lg" />
-        <p className="text-lg text-base-content/70">Redirecting to login...</p>
+        <p className="text-lg text-base-content/70">
+          {isCallback ? 'Completing login...' : 'Redirecting to login...'}
+        </p>
       </div>
     </div>
   );

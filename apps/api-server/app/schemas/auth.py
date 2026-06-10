@@ -11,6 +11,7 @@ class UserInfo(BaseModel):
     name: str | None = None
     department: str | None = None
     groups: list[str] = []
+    auth_source: str = ""  # "domain" or "local"
 
 
 class TokenResponse(BaseModel):
@@ -27,3 +28,4 @@ class AuthCallbackRequest(BaseModel):
     code: str
     redirect_uri: str
     code_verifier: str = ""  # PKCE code verifier for public clients
+    client_id: str = "llm-dlp-web"  # which OIDC client was used

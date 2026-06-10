@@ -31,8 +31,8 @@ const api = ky.create({
 
 export const authApi = {
   me: () => api.get('auth/me').json(),
-  callback: (code, redirectUri, codeVerifier) =>
-    api.post('auth/callback', { json: { code, redirect_uri: redirectUri, code_verifier: codeVerifier || '' } }).json(),
+  callback: (code, redirectUri, codeVerifier, clientId = 'llm-dlp-web') =>
+    api.post('auth/callback', { json: { code, redirect_uri: redirectUri, code_verifier: codeVerifier || '', client_id: clientId } }).json(),
   refresh: (refreshToken) =>
     api.post('auth/refresh', { json: { refresh_token: refreshToken } }).json(),
 };

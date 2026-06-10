@@ -20,6 +20,7 @@ async def get_me(user: dict = Depends(get_current_user)):
         name=user.get("name"),
         department=user.get("department"),
         groups=user.get("groups", []),
+        auth_source=user.get("auth_source", ""),
     )
 
 
@@ -36,7 +37,7 @@ async def auth_callback(body: AuthCallbackRequest):
             "grant_type": "authorization_code",
             "code": body.code,
             "redirect_uri": body.redirect_uri,
-            "client_id": settings.KEYCLOAK_CLIENT_ID,
+            "client_id": body.client_id,
             "client_secret": settings.KEYCLOAK_CLIENT_SECRET,
         }
         # Include PKCE code_verifier for public clients
