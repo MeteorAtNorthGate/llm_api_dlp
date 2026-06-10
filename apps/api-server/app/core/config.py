@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     LITELLM_MASTER_KEY: str = "sk-master-key-change-me"
     LITELLM_PUBLIC_URL: str = "http://localhost:4000"  # 对外暴露给用户的 LiteLLM 访问地址
 
+    # Default model (seeded on first startup via LiteLLM admin API)
+    DEEPSEEK_API_KEY: str = ""  # Set to seed the default deepseek-v4-flash model
+
     # App
     APP_SECRET_KEY: str = "dev-secret-key-change-me"
     APP_LOG_LEVEL: str = "DEBUG"

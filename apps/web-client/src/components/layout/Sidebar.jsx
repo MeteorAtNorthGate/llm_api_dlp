@@ -36,7 +36,7 @@ export default function Sidebar() {
                 onClick={() => loadConversation(conv.id)}
               >
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm truncate">{truncate(conv.title, 30)}</div>
+                  <div className="text-sm truncate">{truncate(conv.title, 24)}</div>
                   <div className="text-xs text-base-content/50">
                     {formatDate(conv.updated_at)} · {conv.message_count} msgs
                   </div>

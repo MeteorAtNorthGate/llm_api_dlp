@@ -1,11 +1,7 @@
-model_list:
-  - model_name: deepseek-v4-flash
-    litellm_params:
-      model: deepseek/deepseek-v4-flash
-      api_base: https://api.deepseek.com
-      api_key: ${DEEPSEEK_API_KEY}
-      rpm: 500
-      tpm: 100000
+# model_list is empty — all models are managed dynamically via the admin UI
+# (stored in LiteLLM DB). On first startup, the api-server seeds the default
+# model via LiteLLM's /model/new API so it is editable/deletable.
+model_list: []
 
 general_settings:
   master_key: sk-master-key-change-me
