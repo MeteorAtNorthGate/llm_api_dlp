@@ -57,15 +57,31 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  // Start a new conversation
-  newConversation: () => {
-    set({
-      activeConversationId: null,
-      messages: [],
-      streamContent: '',
-      isStreaming: false,
-      isUploading: false,
-    });
+  // Start a new conversation — create a placeholder on the backend
+  // so that file uploads work from the very first message.
+  newConversation: async () => {
+    try {
+      const conv = await chatApi.createConversation();
+      set({
+        activeConversationId: conv.id,
+        messages: [],
+        streamContent: '',
+        isStreaming: false,
+        isUploading: false,
+      });
+      // Refresh sidebar list
+      get().loadConversations();
+    } catch (err) {
+      console.error('Failed to create conversation placeholder', err);
+      // Fallback: old behaviour (no convId — first message will create one)
+      set({
+        activeConversationId: null,
+        messages: [],
+        streamContent: '',
+        isStreaming: false,
+        isUploading: false,
+      });
+    }
   },
 
   // Send a message with optional file attachments
@@ -75,19 +91,15 @@ export const useChatStore = create((set, get) => ({
 
     const convId = activeConversationId;
 
-    // V1: files require an existing conversation. If no active conversation,
-    // ignore files and just send the text (they'll be able to attach on subsequent messages)
-    const effectiveFiles = convId ? files : [];
-
     // Upload files (if any)
     let contentParts = null;
     let uploadedAttachments = [];
 
-    if (effectiveFiles.length > 0) {
+    if (convId && files.length > 0) {
       set({ isUploading: true });
       contentParts = [{ type: 'text', text: content }];
 
-      for (const file of effectiveFiles) {
+      for (const file of files) {
         try {
           const attachment = await filesApi.upload(file, convId);
           contentParts.push({

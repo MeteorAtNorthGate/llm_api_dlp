@@ -49,6 +49,9 @@ export const chatApi = {
   listModels: () =>
     api.get('chat/models').json(),
 
+  createConversation: () =>
+    api.post('chat/conversations').json(),
+
   listConversations: () =>
     api.get('chat/conversations').json(),
 

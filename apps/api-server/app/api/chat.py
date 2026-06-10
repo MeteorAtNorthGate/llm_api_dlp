@@ -125,21 +125,42 @@ async def chat_completions(
         await session.commit()
         await session.refresh(conversation)
 
-    # Save user messages to DB
-    for msg in body.messages:
-        if msg.role == "user":
-            db_msg = Message(
-                conversation_id=conversation.id,
-                role=msg.role,
-                content=msg.content,
-                content_parts=msg.content_parts,
+    # Determine how many user messages already exist in this conversation.
+    # (The frontend sends the full history each turn — we only persist NEW ones.)
+    if body.conversation_id:
+        count_result = await session.execute(
+            select(func.count()).select_from(Message).where(
+                Message.conversation_id == uuid.UUID(body.conversation_id),
+                Message.role == "user",
             )
-            session.add(db_msg)
+        )
+        existing_user_count = count_result.scalar()
+    else:
+        existing_user_count = 0
+
+    # Save only new user messages, building a position→db_msg map for attachment linking.
+    position_to_db_msg: dict[int, Message] = {}
+    user_idx = 0
+    for i, msg in enumerate(body.messages):
+        if msg.role == "user":
+            if user_idx >= existing_user_count:
+                db_msg = Message(
+                    conversation_id=conversation.id,
+                    role=msg.role,
+                    content=msg.content,
+                    content_parts=msg.content_parts,
+                )
+                session.add(db_msg)
+                position_to_db_msg[i] = db_msg
+            user_idx += 1
+
+    if position_to_db_msg:
+        await session.flush()  # generate IDs so we can link attachments below
     await session.commit()
 
     # Build LiteLLM-compatible messages with file content injected and DLP applied
     litellm_messages = []
-    for msg in body.messages:
+    for i, msg in enumerate(body.messages):
         if msg.content_parts and msg.role == "user":
             # Process multi-part content — inject parsed file text
             text_parts = []
@@ -161,8 +182,10 @@ async def chat_completions(
                                 attachment.parsed_text, attachment.file_name
                             )
                             text_parts.append(injection)
-                            # Link attachment to the about-to-be-created message
-                            attachment.message_id = db_msg.id
+                            # Link attachment to the correct message (the one just saved for this position)
+                            linked_msg = position_to_db_msg.get(i)
+                            if linked_msg:
+                                attachment.message_id = linked_msg.id
 
             combined_text = "\n".join(text_parts) if text_parts else msg.content
 
@@ -317,6 +340,33 @@ async def _stream_response(
                 await session.commit()
             except Exception:
                 pass
+
+
+@router.post("/conversations", response_model=ConversationSummary, status_code=status.HTTP_201_CREATED)
+async def create_conversation(
+    user_claims: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Create an empty placeholder conversation for the chat UI.
+
+    Called when the user enters the chat page or clicks "New Chat".
+    This ensures an activeConversationId is always available so that
+    file uploads work from the very first message.
+    """
+    user = await _get_or_create_user(session, user_claims)
+
+    conversation = Conversation(user_id=user.id, title="New Conversation")
+    session.add(conversation)
+    await session.commit()
+    await session.refresh(conversation)
+
+    return ConversationSummary(
+        id=conversation.id,
+        title=conversation.title,
+        created_at=conversation.created_at,
+        updated_at=conversation.updated_at,
+        message_count=0,
+    )
 
 
 @router.get("/conversations", response_model=list[ConversationSummary])

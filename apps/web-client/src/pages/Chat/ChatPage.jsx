@@ -17,6 +17,7 @@ export default function ChatPage() {
     sendMessage,
     loadModels,
     setSelectedModel,
+    newConversation,
   } = useChatStore();
   const messagesEndRef = useRef(null);
 
@@ -24,6 +25,14 @@ export default function ChatPage() {
   useEffect(() => {
     loadModels();
   }, [loadModels]);
+
+  // Create a placeholder conversation on mount so file uploads work
+  // from the very first message (backend assigns the conversation ID).
+  useEffect(() => {
+    if (!activeConversationId) {
+      newConversation();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-scroll to bottom
   useEffect(() => {
