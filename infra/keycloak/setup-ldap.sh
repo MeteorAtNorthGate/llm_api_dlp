@@ -88,7 +88,7 @@ payload = {
     'config': {
         'enabled': ['true'],
         'priority': ['1'],
-        'editMode': ['WRITABLE'],
+        'editMode': ['READ_ONLY'],
         'syncRegistrations': ['false'],
         'vendor': ['${LDAP_VENDOR}'],
         'usernameLDAPAttribute': ['${LDAP_USERNAME_ATTR}'],
