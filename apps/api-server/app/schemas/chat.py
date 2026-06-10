@@ -59,7 +59,7 @@ class MessageDetail(BaseModel):
     id: UUID
     role: str
     content: str
-    content_parts: dict | None = None
+    content_parts: list[dict] | None = None
     attachments: list[AttachmentDetail] = []
     token_count: int | None = None
     model: str | None = None

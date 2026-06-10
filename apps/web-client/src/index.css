@@ -1,3 +1,36 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Fix prose colours inside neutral chat bubbles.
+ *
+ * daisyUI's .chat-bubble-neutral sets background → var(--n) and daisyUI
+ * auto-applies text → var(--nc).  The @tailwindcss/typography plugin (prose),
+ * however, derives its per-element colours from base-content, NOT from the
+ * bubble's neutral-content.  When base-content happens to be the same colour
+ * as the neutral background (e.g. both #1e293b in the light theme), prose
+ * elements like <code> render dark-on-dark and become invisible.
+ *
+ * Overriding the prose CSS custom properties to use neutral-content (--nc)
+ * keeps every prose element readable on the neutral bubble, in *both* light
+ * and dark themes, without hard-coding any hex value.
+ */
+.chat-bubble-neutral .prose {
+  --tw-prose-body:       oklch(var(--nc));
+  --tw-prose-headings:   oklch(var(--nc));
+  --tw-prose-lead:       oklch(var(--nc));
+  --tw-prose-links:      oklch(var(--nc));
+  --tw-prose-bold:       oklch(var(--nc));
+  --tw-prose-counters:   oklch(var(--nc));
+  --tw-prose-bullets:    oklch(var(--nc));
+  --tw-prose-hr:         oklch(var(--nc));
+  --tw-prose-quotes:     oklch(var(--nc));
+  --tw-prose-quote-borders: oklch(var(--nc));
+  --tw-prose-captions:   oklch(var(--nc));
+  --tw-prose-code:       oklch(var(--nc));
+  --tw-prose-pre-code:   oklch(var(--nc));
+  --tw-prose-pre-bg:     oklch(var(--n) / 0.15);
+  --tw-prose-th-borders: oklch(var(--nc) / 0.3);
+  --tw-prose-td-borders: oklch(var(--nc) / 0.3);
+}

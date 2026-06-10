@@ -27,7 +27,7 @@ class Message(Base):
     # Structured multi-part content (OpenAI content part format)
     # Example: [{"type":"text","text":"..."},{"type":"file","file_reference":{"attachment_id":"..."}}]
     # NULL for legacy messages — fall back to `content` field
-    content_parts: Mapped[dict | None] = mapped_column(
+    content_parts: Mapped[list | None] = mapped_column(
         JSONB, nullable=True, default=None
     )
 
