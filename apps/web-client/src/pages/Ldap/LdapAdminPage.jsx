@@ -1,5 +1,9 @@
-/** LDAP Admin Page — manage Keycloak LDAP User Federation via Keycloak REST API.
- *  Only accessible to users in the 'admins' group. */
+/** LDAP Admin Page — manage Keycloak LDAP User Federation.
+ *  Only accessible to users in the 'admins' group.
+ *
+ *  The form is intentionally minimal: only the fields IT actually needs
+ *  to fill in. Everything else (vendor, authType, editMode, etc.) is
+ *  hardcoded to sensible defaults by the backend. */
 
 import { useCallback, useEffect, useState } from 'react';
 import Layout from '../../components/layout/Layout';
@@ -7,104 +11,36 @@ import Modal from '../../components/ui/Modal';
 import Spinner from '../../components/ui/Spinner';
 import { ldapApi } from '../../services/api';
 
-const VENDORS = [
-  { value: 'ad', label: 'Active Directory' },
-  { value: 'rhds', label: 'Red Hat Directory Server' },
-  { value: 'tivoli', label: 'IBM Tivoli Directory' },
-  { value: 'other', label: 'Other (OpenLDAP / Generic)' },
-];
-
-const AUTH_TYPES = [
-  { value: 'simple', label: 'LDAP (via BindDN)' },
-  { value: 'anonymous', label: 'LDAP (Anonymous)' },
-];
-
-const SECURITY_PROTOCOLS = [
-  { value: 'unencrypted', label: 'Unencrypted' },
-  { value: 'ldaps', label: 'LDAPS (SSL/TLS)' },
-  { value: 'starttls', label: 'StartTLS' },
-];
-
-// Default attribute values per vendor
-const VENDOR_DEFAULTS = {
-  ad: {
-    username_attr: 'sAMAccountName',
-    rdn_attr: 'sAMAccountName',
-    uuid_attr: 'objectGUID',
-  },
-  rhds: {
-    username_attr: 'uid',
-    rdn_attr: 'uid',
-    uuid_attr: 'nsuniqueid',
-  },
-  tivoli: {
-    username_attr: 'uid',
-    rdn_attr: 'uid',
-    uuid_attr: 'ibm-entryuuid',
-  },
-  other: {
-    username_attr: 'uid',
-    rdn_attr: 'uid',
-    uuid_attr: 'entryUUID',
-  },
-};
-
 const EMPTY_FORM = {
   name: '',
-  vendor: 'ad',
-  auth_type: 'simple',
-  security_protocol: 'unencrypted',
   host: '',
   port: 389,
   bind_dn: '',
   bind_password: '',
-  user_search_base: '',
-  user_filter: '',
+  users_dn: '',
   username_attr: 'sAMAccountName',
   rdn_attr: 'sAMAccountName',
   uuid_attr: 'objectGUID',
-  first_name_attr: '',
-  last_name_attr: '',
-  email_attr: '',
   enabled: true,
 };
 
 // ── Standalone form component (module-level to avoid focus loss) ──────
 
 function LdapFormFields({ form, setForm, showPw, setShowPw, isEdit = false }) {
-  const handleVendorChange = (vendor) => {
-    const defaults = VENDOR_DEFAULTS[vendor] || VENDOR_DEFAULTS.other;
-    setForm((f) => ({
-      ...f,
-      vendor,
-      username_attr: defaults.username_attr,
-      rdn_attr: defaults.rdn_attr,
-      uuid_attr: defaults.uuid_attr,
-    }));
-  };
-
-  // Auto-set port when security protocol changes
-  const handleProtocolChange = (protocol) => {
-    const defaultPorts = { unencrypted: 389, ldaps: 636, starttls: 389 };
-    setForm((f) => ({
-      ...f,
-      security_protocol: protocol,
-      port: defaultPorts[protocol] || 389,
-    }));
-  };
-
   return (
-    <div className="space-y-4">
-      {/* Row 1: Name + Vendor */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="form-control">
-          <label className="label">
+    <div className="space-y-5">
+      {/* ── Connection ── */}
+      <fieldset className="border border-base-300 rounded-lg p-4">
+        <legend className="text-sm font-semibold px-2">Connection</legend>
+
+        <div className="form-control mb-3">
+          <label className="label pb-1">
             <span className="label-text font-medium">Auth Name *</span>
           </label>
           <input
             type="text"
             className="input input-bordered"
-            placeholder="e.g., 域控登录 (Windows AD)"
+            placeholder="e.g., 公司内部AD域"
             value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
           />
@@ -114,260 +50,152 @@ function LdapFormFields({ form, setForm, showPw, setShowPw, isEdit = false }) {
             </span>
           </label>
         </div>
-        <div className="form-control">
-          <label className="label">
-            <span className="label-text font-medium">Vendor</span>
-          </label>
-          <select
-            className="select select-bordered"
-            value={form.vendor}
-            onChange={(e) => handleVendorChange(e.target.value)}
-          >
-            {VENDORS.map((v) => (
-              <option key={v.value} value={v.value}>{v.label}</option>
-            ))}
-          </select>
-          <label className="label">
-            <span className="label-text-alt text-base-content/50">
-              Determines default attribute mappings
-            </span>
-          </label>
-        </div>
-      </div>
 
-      {/* Row 2: Auth Type + Security Protocol */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="form-control">
-          <label className="label">
-            <span className="label-text font-medium">Auth Type</span>
-          </label>
-          <select
-            className="select select-bordered"
-            value={form.auth_type}
-            onChange={(e) => setForm((f) => ({ ...f, auth_type: e.target.value }))}
-          >
-            {AUTH_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>{t.label}</option>
-            ))}
-          </select>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="form-control col-span-2">
+            <label className="label pb-1">
+              <span className="label-text font-medium">Host Address *</span>
+            </label>
+            <input
+              type="text"
+              className="input input-bordered font-mono text-sm"
+              placeholder="e.g., 10.0.0.5 or mydomain.com"
+              value={form.host}
+              onChange={(e) => setForm((f) => ({ ...f, host: e.target.value }))}
+            />
+          </div>
+          <div className="form-control">
+            <label className="label pb-1">
+              <span className="label-text font-medium">Port</span>
+            </label>
+            <select
+              className="select select-bordered"
+              value={form.port}
+              onChange={(e) => setForm((f) => ({ ...f, port: parseInt(e.target.value) }))}
+            >
+              <option value={389}>389 (LDAP)</option>
+              <option value={636}>636 (LDAPS)</option>
+            </select>
+          </div>
         </div>
-        <div className="form-control">
-          <label className="label">
-            <span className="label-text font-medium">Security Protocol</span>
-          </label>
-          <select
-            className="select select-bordered"
-            value={form.security_protocol}
-            onChange={(e) => handleProtocolChange(e.target.value)}
-          >
-            {SECURITY_PROTOCOLS.map((p) => (
-              <option key={p.value} value={p.value}>{p.label}</option>
-            ))}
-          </select>
-        </div>
-      </div>
+      </fieldset>
 
-      {/* Row 3: Host + Port */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="form-control col-span-2">
-          <label className="label">
-            <span className="label-text font-medium">Host Address *</span>
+      {/* ── Authentication ── */}
+      <fieldset className="border border-base-300 rounded-lg p-4">
+        <legend className="text-sm font-semibold px-2">Authentication</legend>
+
+        <div className="form-control mb-3">
+          <label className="label pb-1">
+            <span className="label-text font-medium">Bind DN *</span>
           </label>
           <input
             type="text"
             className="input input-bordered font-mono text-sm"
-            placeholder="e.g., mydomain.com"
-            value={form.host}
-            onChange={(e) => setForm((f) => ({ ...f, host: e.target.value }))}
-          />
-        </div>
-        <div className="form-control">
-          <label className="label">
-            <span className="label-text font-medium">Port</span>
-          </label>
-          <input
-            type="number"
-            className="input input-bordered"
-            placeholder="389 or 636"
-            value={form.port}
-            onChange={(e) => setForm((f) => ({ ...f, port: parseInt(e.target.value) || 389 }))}
-          />
-        </div>
-      </div>
-
-      {/* Row 4: Bind DN */}
-      <div className="form-control">
-        <label className="label">
-          <span className="label-text font-medium">Bind DN</span>
-        </label>
-        <input
-          type="text"
-          className="input input-bordered font-mono text-sm"
-          placeholder="e.g., CN=svc_keycloak,OU=ServiceAccounts,DC=mydomain,DC=com"
-          value={form.bind_dn}
-          onChange={(e) => setForm((f) => ({ ...f, bind_dn: e.target.value }))}
-        />
-        <label className="label">
-          <span className="label-text-alt text-base-content/50">
-            Use '%s' as username placeholder, e.g., DOM\%s or uid=%s,ou=Users,dc=mydomain,dc=com
-          </span>
-        </label>
-      </div>
-
-      {/* Row 5: Bind Password */}
-      <div className="form-control">
-        <label className="label">
-          <span className="label-text font-medium">
-            Bind Password {isEdit && <span className="text-base-content/50">(leave blank to keep current)</span>}
-          </span>
-        </label>
-        <div className="join">
-          <input
-            type={showPw ? 'text' : 'password'}
-            className="input input-bordered join-item flex-1 font-mono"
-            placeholder={isEdit ? 'Leave blank to keep current' : 'Enter bind password'}
-            value={form.bind_password}
-            onChange={(e) => setForm((f) => ({ ...f, bind_password: e.target.value }))}
-          />
-          <button type="button" className="btn btn-outline join-item" onClick={() => setShowPw((v) => !v)}>
-            {showPw ? 'Hide' : 'Show'}
-          </button>
-        </div>
-        <label className="label">
-          <span className="label-text-alt text-warning">
-            ⚠ Warning: This password is stored in Keycloak's database in reversible form. Do not use a high-privilege account!
-          </span>
-        </label>
-      </div>
-
-      {/* Row 6: User Search Base + User Filter */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="form-control">
-          <label className="label">
-            <span className="label-text font-medium">User Search Base</span>
-          </label>
-          <input
-            type="text"
-            className="input input-bordered font-mono text-sm"
-            placeholder="e.g., OU=Users,DC=mydomain,DC=com"
-            value={form.user_search_base}
-            onChange={(e) => setForm((f) => ({ ...f, user_search_base: e.target.value }))}
-          />
-        </div>
-        <div className="form-control">
-          <label className="label">
-            <span className="label-text font-medium">Custom User Filter</span>
-          </label>
-          <input
-            type="text"
-            className="input input-bordered font-mono text-sm"
-            placeholder="e.g., (&amp;(objectClass=person)(uid=%s))"
-            value={form.user_filter}
-            onChange={(e) => setForm((f) => ({ ...f, user_filter: e.target.value }))}
+            placeholder="e.g., CN=kc-ad-reader,CN=Users,DC=acken,DC=int"
+            value={form.bind_dn}
+            onChange={(e) => setForm((f) => ({ ...f, bind_dn: e.target.value }))}
           />
           <label className="label">
             <span className="label-text-alt text-base-content/50">
-              Additional LDAP filter appended to the base search
+              A read-only service account DN. Do NOT use a domain admin account.
             </span>
           </label>
         </div>
-      </div>
 
-      {/* Row 7: LDAP Attribute Mapping (core) */}
-      <div className="bg-base-200 rounded-lg p-4">
-        <h4 className="text-sm font-semibold mb-3">Core LDAP Attributes</h4>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text font-medium">Username Attribute</span>
-            </label>
+        <div className="form-control">
+          <label className="label pb-1">
+            <span className="label-text font-medium">
+              Bind Password * {isEdit && <span className="text-base-content/50 font-normal">(leave blank to keep current)</span>}
+            </span>
+          </label>
+          <div className="join">
             <input
-              type="text"
-              className="input input-bordered input-sm font-mono"
-              value={form.username_attr}
-              onChange={(e) => setForm((f) => ({ ...f, username_attr: e.target.value }))}
+              type={showPw ? 'text' : 'password'}
+              className="input input-bordered join-item flex-1 font-mono"
+              placeholder={isEdit ? 'Leave blank to keep current' : 'Enter password'}
+              value={form.bind_password}
+              onChange={(e) => setForm((f) => ({ ...f, bind_password: e.target.value }))}
             />
-            <label className="label">
-              <span className="label-text-alt text-base-content/50">
-                Defaults set by vendor
-              </span>
-            </label>
+            <button type="button" className="btn btn-outline join-item" onClick={() => setShowPw((v) => !v)}>
+              {showPw ? 'Hide' : 'Show'}
+            </button>
           </div>
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text font-medium">RDN Attribute</span>
-            </label>
-            <input
-              type="text"
-              className="input input-bordered input-sm font-mono"
-              value={form.rdn_attr}
-              onChange={(e) => setForm((f) => ({ ...f, rdn_attr: e.target.value }))}
-            />
-          </div>
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text font-medium">UUID Attribute</span>
-            </label>
-            <input
-              type="text"
-              className="input input-bordered input-sm font-mono"
-              value={form.uuid_attr}
-              onChange={(e) => setForm((f) => ({ ...f, uuid_attr: e.target.value }))}
-            />
-          </div>
+          <label className="label">
+            <span className="label-text-alt text-warning">
+              ⚠ Password is stored in Keycloak's database in reversible form. Use a low-privilege read-only account.
+            </span>
+          </label>
         </div>
-      </div>
+      </fieldset>
 
-      {/* Row 8: User Attribute Mappers (optional) */}
-      <div className="bg-base-200 rounded-lg p-4">
-        <h4 className="text-sm font-semibold mb-3">
-          User Attribute Mapping{' '}
-          <span className="text-base-content/50 font-normal">(creates Keycloak mappers)</span>
-        </h4>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text font-medium">First Name Attribute</span>
-            </label>
-            <input
-              type="text"
-              className="input input-bordered input-sm font-mono"
-              placeholder="e.g., givenName"
-              value={form.first_name_attr}
-              onChange={(e) => setForm((f) => ({ ...f, first_name_attr: e.target.value }))}
-            />
-          </div>
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text font-medium">Last Name Attribute</span>
-            </label>
-            <input
-              type="text"
-              className="input input-bordered input-sm font-mono"
-              placeholder="e.g., sn"
-              value={form.last_name_attr}
-              onChange={(e) => setForm((f) => ({ ...f, last_name_attr: e.target.value }))}
-            />
-          </div>
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text font-medium">Email Attribute</span>
-            </label>
-            <input
-              type="text"
-              className="input input-bordered input-sm font-mono"
-              placeholder="e.g., mail"
-              value={form.email_attr}
-              onChange={(e) => setForm((f) => ({ ...f, email_attr: e.target.value }))}
-            />
-          </div>
+      {/* ── User Search ── */}
+      <fieldset className="border border-base-300 rounded-lg p-4">
+        <legend className="text-sm font-semibold px-2">User Search</legend>
+
+        <div className="form-control mb-3">
+          <label className="label pb-1">
+            <span className="label-text font-medium">Users DN *</span>
+          </label>
+          <input
+            type="text"
+            className="input input-bordered font-mono text-sm"
+            placeholder="e.g., DC=acken,DC=int"
+            value={form.users_dn}
+            onChange={(e) => setForm((f) => ({ ...f, users_dn: e.target.value }))}
+          />
+          <label className="label">
+            <span className="label-text-alt text-base-content/50">
+              The base DN where Keycloak searches for user accounts. Use the root (<code>DC=...</code>) for
+              the widest coverage, or narrow to a specific OU.
+            </span>
+          </label>
         </div>
-        <label className="label">
-          <span className="label-text-alt text-base-content/50">
-            Leave empty to skip mapper creation. Keycloak auto-maps common attributes based on vendor.
-          </span>
-        </label>
-      </div>
+
+        <details className="cursor-pointer">
+          <summary className="text-sm font-medium text-base-content/70 py-1">
+            Advanced: LDAP Attribute Names
+          </summary>
+          <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-base-300">
+            <div className="form-control">
+              <label className="label pb-1">
+                <span className="label-text text-xs font-medium">Username Attribute</span>
+              </label>
+              <input
+                type="text"
+                className="input input-bordered input-sm font-mono"
+                value={form.username_attr}
+                onChange={(e) => setForm((f) => ({ ...f, username_attr: e.target.value }))}
+              />
+            </div>
+            <div className="form-control">
+              <label className="label pb-1">
+                <span className="label-text text-xs font-medium">RDN Attribute</span>
+              </label>
+              <input
+                type="text"
+                className="input input-bordered input-sm font-mono"
+                value={form.rdn_attr}
+                onChange={(e) => setForm((f) => ({ ...f, rdn_attr: e.target.value }))}
+              />
+            </div>
+            <div className="form-control">
+              <label className="label pb-1">
+                <span className="label-text text-xs font-medium">UUID Attribute</span>
+              </label>
+              <input
+                type="text"
+                className="input input-bordered input-sm font-mono"
+                value={form.uuid_attr}
+                onChange={(e) => setForm((f) => ({ ...f, uuid_attr: e.target.value }))}
+              />
+            </div>
+          </div>
+          <p className="text-xs text-base-content/50 mt-2">
+            These are pre-filled with Windows AD defaults (sAMAccountName / objectGUID).
+            Only change if your directory uses different attribute names.
+          </p>
+        </details>
+      </fieldset>
 
       {/* Enabled toggle (edit mode) */}
       {isEdit && (
@@ -394,14 +222,12 @@ export default function LdapAdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Add modal
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState({ ...EMPTY_FORM });
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Edit modal
   const [showEdit, setShowEdit] = useState(false);
   const [editSource, setEditSource] = useState(null);
   const [editForm, setEditForm] = useState({ ...EMPTY_FORM });
@@ -409,11 +235,8 @@ export default function LdapAdminPage() {
   const [editError, setEditError] = useState(null);
   const [showEditPassword, setShowEditPassword] = useState(false);
 
-  // Delete
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
-
-  // ── Fetch sources ──────────────────────────────────────
 
   const fetchSources = useCallback(async () => {
     setLoading(true);
@@ -428,16 +251,12 @@ export default function LdapAdminPage() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchSources();
-  }, [fetchSources]);
-
-  // ── Add source ─────────────────────────────────────────
+  useEffect(() => { fetchSources(); }, [fetchSources]);
 
   const handleAdd = async () => {
     setAddError(null);
-    if (!addForm.name || !addForm.host) {
-      setAddError('Auth name and Host address are required.');
+    if (!addForm.name || !addForm.host || !addForm.bind_dn || !addForm.bind_password || !addForm.users_dn) {
+      setAddError('All fields except the advanced attribute names are required.');
       return;
     }
     setAdding(true);
@@ -454,27 +273,18 @@ export default function LdapAdminPage() {
     }
   };
 
-  // ── Edit source ────────────────────────────────────────
-
   const openEdit = (source) => {
     setEditSource(source);
     setEditForm({
       name: source.name || '',
-      vendor: source.vendor || 'ad',
-      auth_type: source.auth_type || 'simple',
-      security_protocol: source.security_protocol || 'unencrypted',
       host: source.host || '',
       port: source.port || 389,
       bind_dn: source.bind_dn || '',
       bind_password: '',
-      user_search_base: source.user_search_base || '',
-      user_filter: source.user_filter || '',
-      username_attr: source.username_attr || '',
-      rdn_attr: source.rdn_attr || '',
-      uuid_attr: source.uuid_attr || '',
-      first_name_attr: source.first_name_attr || '',
-      last_name_attr: source.last_name_attr || '',
-      email_attr: source.email_attr || '',
+      users_dn: source.users_dn || '',
+      username_attr: source.username_attr || 'sAMAccountName',
+      rdn_attr: source.rdn_attr || 'sAMAccountName',
+      uuid_attr: source.uuid_attr || 'objectGUID',
       enabled: source.enabled !== false,
     });
     setEditError(null);
@@ -489,9 +299,7 @@ export default function LdapAdminPage() {
       const payload = {};
       for (const [key, value] of Object.entries(editForm)) {
         if (key === 'bind_password' && !value) continue;
-        if (editSource[key] !== value) {
-          payload[key] = value;
-        }
+        if (editSource[key] !== value) payload[key] = value;
       }
       if (Object.keys(payload).length === 0) {
         setShowEdit(false);
@@ -509,8 +317,6 @@ export default function LdapAdminPage() {
     }
   };
 
-  // ── Delete source ──────────────────────────────────────
-
   const confirmDelete = async () => {
     setDeleting(true);
     try {
@@ -525,8 +331,6 @@ export default function LdapAdminPage() {
     }
   };
 
-  // ── Toggle enabled ─────────────────────────────────────
-
   const toggleEnabled = async (source) => {
     try {
       await ldapApi.updateSource(source.id, { enabled: !source.enabled });
@@ -536,29 +340,27 @@ export default function LdapAdminPage() {
     }
   };
 
-  // ── Trigger sync ───────────────────────────────────────
-
   const triggerSync = async (source) => {
     try {
       await ldapApi.syncSource(source.id);
-      setError(`Sync triggered for "${source.name || source.id}". Check Keycloak for progress.`);
+      setError(null);
+      // Show success via a brief info
+      const msg = `Sync triggered for "${source.name}". Check Keycloak admin for progress.`;
+      setError(msg);
       setTimeout(() => setError(null), 5000);
     } catch (err) {
       setError(err.message || 'Failed to trigger sync');
     }
   };
 
-  // ── Render ────────────────────────────────────────────
-
   return (
     <Layout showSidebar={false}>
-      <div className="p-6 max-w-5xl mx-auto space-y-6">
-        {/* Header */}
+      <div className="p-6 max-w-3xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">LDAP Configuration</h1>
             <p className="text-base-content/60">
-              Manage Keycloak LDAP User Federation sources — changes take effect on next login
+              Manage Windows AD / LDAP authentication sources
             </p>
           </div>
           <button
@@ -574,7 +376,6 @@ export default function LdapAdminPage() {
           </button>
         </div>
 
-        {/* Banner — can be error or info */}
         {error && (
           <div className={`alert ${error.startsWith('Sync triggered') ? 'alert-info' : 'alert-error'}`}>
             <span>{error}</span>
@@ -582,100 +383,51 @@ export default function LdapAdminPage() {
           </div>
         )}
 
-        {/* Source list */}
         {loading ? (
           <div className="flex justify-center py-16"><Spinner size="lg" /></div>
         ) : sources.length === 0 ? (
           <div className="text-center py-16 text-base-content/50 border border-dashed border-base-300 rounded-lg">
             <p className="text-lg font-medium">No LDAP sources configured</p>
-            <p className="text-sm mt-1">Add an LDAP authentication source to enable domain login</p>
+            <p className="text-sm mt-1">Add an AD / LDAP source to enable domain authentication</p>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-4">
             {sources.map((s) => (
               <div key={s.id} className={`card bg-base-100 shadow-sm border ${s.enabled ? 'border-base-300' : 'border-base-300 opacity-60'}`}>
                 <div className="card-body p-5">
                   <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-bold text-lg">{s.name || 'Unnamed Source'}</h3>
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <span className="badge badge-outline badge-sm">
-                          {VENDORS.find((v) => v.value === s.vendor)?.label || s.vendor}
-                        </span>
-                        <span className="badge badge-outline badge-sm">
-                          {AUTH_TYPES.find((t) => t.value === s.auth_type)?.label || s.auth_type}
-                        </span>
-                        <span className="badge badge-outline badge-sm">
-                          {SECURITY_PROTOCOLS.find((p) => p.value === s.security_protocol)?.label || s.security_protocol}
-                        </span>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <h3 className="font-bold text-lg">{s.name || 'Unnamed'}</h3>
                         {s.enabled ? (
-                          <span className="badge badge-success badge-sm">Enabled</span>
+                          <span className="badge badge-success badge-sm">Active</span>
                         ) : (
                           <span className="badge badge-ghost badge-sm">Disabled</span>
                         )}
                       </div>
+                      <div className="text-sm text-base-content/60 mt-2 grid grid-cols-2 gap-x-6 gap-y-1">
+                        <div><span className="font-medium">Host:</span> <code className="text-xs">{s.host}:{s.port}</code></div>
+                        <div><span className="font-medium">Search Base:</span> <code className="text-xs">{s.users_dn || '—'}</code></div>
+                        <div><span className="font-medium">Bind DN:</span> <code className="text-xs truncate block max-w-[280px]">{s.bind_dn || '—'}</code></div>
+                        <div>
+                          <span className="font-medium">Attributes:</span>{' '}
+                          <code className="text-xs">{s.username_attr}</code>
+                          {s.bind_password_set && <span className="ml-2 text-xs">🔒 password set</span>}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-
-                  <div className="text-xs text-base-content/60 mt-3 space-y-1">
-                    <div>
-                      <span className="font-medium">Host:</span>{' '}
-                      <code className="text-xs">{s.host}:{s.port}</code>
-                    </div>
-                    {s.bind_dn && (
-                      <div>
-                        <span className="font-medium">Bind DN:</span>{' '}
-                        <code className="text-xs">{s.bind_dn}</code>
-                      </div>
-                    )}
-                    {s.user_search_base && (
-                      <div>
-                        <span className="font-medium">Search Base:</span>{' '}
-                        <code className="text-xs">{s.user_search_base}</code>
-                      </div>
-                    )}
-                    {s.user_filter && (
-                      <div>
-                        <span className="font-medium">Filter:</span>{' '}
-                        <code className="text-xs">{s.user_filter}</code>
-                      </div>
-                    )}
-                    <div>
-                      <span className="font-medium">Username attr:</span>{' '}
-                      <code className="text-xs">{s.username_attr || '(login username)'}</code>
-                    </div>
-                    {s.bind_password_set && (
-                      <div>
-                        <span className="font-medium">Password:</span> ●●●●●●●● (set)
-                      </div>
-                    )}
                   </div>
 
                   <div className="card-actions justify-end mt-3 gap-2">
-                    <button
-                      className="btn btn-outline btn-xs"
-                      onClick={() => triggerSync(s)}
-                    >
-                      Sync
-                    </button>
+                    <button className="btn btn-outline btn-xs" onClick={() => triggerSync(s)}>Sync Now</button>
                     <button
                       className={`btn btn-xs ${s.enabled ? 'btn-outline btn-warning' : 'btn-outline btn-success'}`}
                       onClick={() => toggleEnabled(s)}
                     >
                       {s.enabled ? 'Disable' : 'Enable'}
                     </button>
-                    <button
-                      className="btn btn-outline btn-xs"
-                      onClick={() => openEdit(s)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="btn btn-error btn-xs btn-outline"
-                      onClick={() => setDeleteTarget(s)}
-                    >
-                      Delete
-                    </button>
+                    <button className="btn btn-outline btn-xs" onClick={() => openEdit(s)}>Edit</button>
+                    <button className="btn btn-error btn-xs btn-outline" onClick={() => setDeleteTarget(s)}>Delete</button>
                   </div>
                 </div>
               </div>
@@ -683,13 +435,11 @@ export default function LdapAdminPage() {
           </div>
         )}
 
-        {/* ── Add Modal ──────────────────────────────────── */}
+        {/* ── Add Modal ── */}
         <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Add LDAP Auth Source" size="lg">
           <div className="space-y-4">
             <LdapFormFields form={addForm} setForm={setAddForm} showPw={showPassword} setShowPw={setShowPassword} />
-
             {addError && <div className="alert alert-error text-sm"><span>{addError}</span></div>}
-
             <div className="modal-action">
               <button className="btn btn-ghost" onClick={() => setShowAdd(false)}>Cancel</button>
               <button className="btn btn-primary" onClick={handleAdd} disabled={adding}>
@@ -700,27 +450,17 @@ export default function LdapAdminPage() {
           </div>
         </Modal>
 
-        {/* ── Edit Modal ──────────────────────────────────── */}
+        {/* ── Edit Modal ── */}
         <Modal open={showEdit} onClose={() => setShowEdit(false)} title={`Edit: ${editSource?.name || 'LDAP Source'}`} size="lg">
           {editSource && (
             <div className="space-y-4">
-              <div className="flex items-center gap-3 p-3 bg-base-200 rounded-lg">
-                <span className="badge badge-outline">
-                  {VENDORS.find((v) => v.value === editSource.vendor)?.label || editSource.vendor}
-                </span>
-                <code className="text-sm">{editSource.host}:{editSource.port}</code>
+              <div className="flex items-center gap-3 p-3 bg-base-200 rounded-lg text-sm">
+                <code>{editSource.host}:{editSource.port}</code>
+                <span className="text-base-content/50">→</span>
+                <code>{editSource.users_dn}</code>
               </div>
-
-              <LdapFormFields
-                form={editForm}
-                setForm={setEditForm}
-                showPw={showEditPassword}
-                setShowPw={setShowEditPassword}
-                isEdit
-              />
-
+              <LdapFormFields form={editForm} setForm={setEditForm} showPw={showEditPassword} setShowPw={setShowEditPassword} isEdit />
               {editError && <div className="alert alert-error text-sm"><span>{editError}</span></div>}
-
               <div className="modal-action">
                 <button className="btn btn-ghost" onClick={() => setShowEdit(false)}>Cancel</button>
                 <button className="btn btn-primary" onClick={handleEdit} disabled={editing}>
@@ -732,7 +472,7 @@ export default function LdapAdminPage() {
           )}
         </Modal>
 
-        {/* ── Delete Confirmation Modal ─────────────────── */}
+        {/* ── Delete Modal ── */}
         <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete LDAP Source">
           {deleteTarget && (
             <div className="space-y-4">
@@ -741,14 +481,10 @@ export default function LdapAdminPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
                 <div>
-                  <p className="font-bold">Remove "{deleteTarget.name || 'Unnamed Source'}"?</p>
-                  <p className="text-sm">
-                    This deletes the Keycloak LDAP User Storage Provider and all its mappers.
-                    Users will no longer be able to authenticate via this LDAP source.
-                  </p>
+                  <p className="font-bold">Remove "{deleteTarget.name || 'Unnamed'}"?</p>
+                  <p className="text-sm">This deletes the LDAP provider from Keycloak. Domain users will no longer be able to log in via this source.</p>
                 </div>
               </div>
-
               <div className="modal-action">
                 <button className="btn btn-ghost" onClick={() => setDeleteTarget(null)}>Cancel</button>
                 <button className="btn btn-error" onClick={confirmDelete} disabled={deleting}>
