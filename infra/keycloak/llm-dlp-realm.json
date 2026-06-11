@@ -48,69 +48,6 @@
             "claim.name": "groups",
             "userinfo.token.claim": "true"
           }
-        },
-        {
-          "name": "auth_source",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-hardcoded-claim-mapper",
-          "consentRequired": false,
-          "config": {
-            "claim.value": "domain",
-            "id.token.claim": "true",
-            "access.token.claim": "true",
-            "claim.name": "auth_source",
-            "userinfo.token.claim": "true"
-          }
-        }
-      ]
-    },
-    {
-      "clientId": "llm-dlp-web-local",
-      "name": "LLM Platform Web Client (Local Auth Only)",
-      "enabled": true,
-      "publicClient": true,
-      "protocol": "openid-connect",
-      "standardFlowEnabled": true,
-      "directAccessGrantsEnabled": false,
-      "implicitFlowEnabled": false,
-      "serviceAccountsEnabled": false,
-      "redirectUris": [
-        "http://localhost:5173/*",
-        "http://localhost:8000/auth/callback"
-      ],
-      "webOrigins": ["http://localhost:5173"],
-      "adminUrl": "http://localhost:5173",
-      "attributes": {
-        "pkce.code.challenge.method": "S256",
-        "access.token.lifespan": "3600",
-        "id.token.lifespan": "3600"
-      },
-      "protocolMappers": [
-        {
-          "name": "groups",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-group-membership-mapper",
-          "consentRequired": false,
-          "config": {
-            "full.path": "false",
-            "id.token.claim": "false",
-            "access.token.claim": "true",
-            "claim.name": "groups",
-            "userinfo.token.claim": "true"
-          }
-        },
-        {
-          "name": "auth_source",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-hardcoded-claim-mapper",
-          "consentRequired": false,
-          "config": {
-            "claim.value": "local",
-            "id.token.claim": "true",
-            "access.token.claim": "true",
-            "claim.name": "auth_source",
-            "userinfo.token.claim": "true"
-          }
         }
       ]
     }

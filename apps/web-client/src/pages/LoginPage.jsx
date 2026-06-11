@@ -1,4 +1,4 @@
-/** LoginPage — auth source selector + Keycloak OIDC redirect flow. */
+/** LoginPage — auto-redirects to Keycloak OIDC, handles callback. */
 
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -10,36 +10,34 @@ export default function LoginPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [error, setError] = useState(null);
-  const [authSource, setAuthSource] = useState('domain');
 
-  // Guard against React StrictMode double-mounting in development
-  const handledRef = useRef(false);
+  const callbackRef = useRef(false);
+  const redirectedRef = useRef(false);
 
-  const loggedOut = searchParams.get('logged_out') === 'true';
-  const sessionExpired = searchParams.get('session_expired') === 'true';
+  const isCallback = !!searchParams.get('code');
+
+  // ── OIDC callback handler ─────────────────────────────
 
   useEffect(() => {
-    if (handledRef.current) return;
+    if (callbackRef.current) return;
 
     const code = searchParams.get('code');
+    if (!code) return;
 
-    if (code) {
-      handledRef.current = true;
-      const redirectUri = `${window.location.origin}/auth/callback`;
-      const codeVerifier = sessionStorage.getItem('pkce_code_verifier') || '';
-      sessionStorage.removeItem('pkce_code_verifier');
+    callbackRef.current = true;
+    const redirectUri = `${window.location.origin}/auth/callback`;
+    const codeVerifier = sessionStorage.getItem('pkce_code_verifier') || '';
+    sessionStorage.removeItem('pkce_code_verifier');
 
-      if (!codeVerifier) {
-        // PKCE verifier was already consumed (e.g., by StrictMode re-run)
-        return;
-      }
+    if (!codeVerifier) return; // PKCE verifier already consumed (StrictMode)
 
-      login(code, redirectUri, codeVerifier).catch((err) => {
-        setError('Login failed. Please try again.');
-        console.error('Login error:', err);
-      });
-    }
-  }, [isLoading, isAuthenticated, login, searchParams]);
+    login(code, redirectUri, codeVerifier).catch((err) => {
+      setError('Login failed. Please try again.');
+      console.error('Login error:', err);
+    });
+  }, [login, searchParams]);
+
+  // ── Redirect to app once authenticated ────────────────
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -47,37 +45,15 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, navigate]);
 
-  const handleLogin = () => {
-    handledRef.current = true;
-    redirectToLogin(authSource);
-  };
+  // ── Auto-redirect to Keycloak login ───────────────────
 
-  // Allow Enter key to trigger login
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      handleLogin();
-    }
-  };
+  useEffect(() => {
+    if (redirectedRef.current) return;
+    if (isLoading || isAuthenticated || isCallback) return;
 
-  // ── Logged-out state ──────────────────────────────────
-
-  if (loggedOut || sessionExpired) {
-    const message = sessionExpired
-      ? 'Your session has expired. Please log in again.'
-      : 'You have been logged out.';
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-base-200">
-        <div className="card w-96 bg-base-100 shadow-xl">
-          <div className="card-body items-center text-center space-y-4">
-            <h1 className="text-2xl font-semibold">{message}</h1>
-            <button className="btn btn-primary" onClick={handleLogin}>
-              Login
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+    redirectedRef.current = true;
+    redirectToLogin();
+  }, [isLoading, isAuthenticated, isCallback, redirectToLogin]);
 
   // ── Error state ───────────────────────────────────────
 
@@ -92,7 +68,7 @@ export default function LoginPage() {
               </svg>
               <span>{error}</span>
             </div>
-            <button className="btn btn-primary" onClick={handleLogin}>
+            <button className="btn btn-primary" onClick={() => { callbackRef.current = false; setError(null); }}>
               Try Again
             </button>
           </div>
@@ -101,50 +77,7 @@ export default function LoginPage() {
     );
   }
 
-  // ── Auth source selector (landing page, no code in URL) ──
-
-  const isCallback = !!searchParams.get('code');
-
-  if (!isLoading && !isAuthenticated && !isCallback && !loggedOut && !sessionExpired) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-base-200" onKeyDown={handleKeyDown}>
-        <div className="card w-96 bg-base-100 shadow-xl">
-          <div className="card-body items-center text-center space-y-5">
-            <h1 className="text-2xl font-bold">LLM Platform</h1>
-            <p className="text-base-content/70">Select authentication method</p>
-
-            {/* Auth Source Dropdown */}
-            <div className="form-control w-full max-w-xs">
-              <select
-                className="select select-bordered w-full"
-                value={authSource}
-                onChange={(e) => setAuthSource(e.target.value)}
-              >
-                <option value="domain">
-                  域控登录 (Windows AD)
-                </option>
-                <option value="local">
-                  本地账号 (Local)
-                </option>
-              </select>
-            </div>
-
-            <button className="btn btn-primary w-full" onClick={handleLogin}>
-              Login
-            </button>
-
-            <p className="text-xs text-base-content/50">
-              {authSource === 'domain'
-                ? 'Use your Windows domain account (same as Windows login)'
-                : 'Use your local platform account'}
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Loading state (code exchange or initial redirect) ──
+  // ── Loading spinner (code exchange or initial redirect) ──
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-base-200">

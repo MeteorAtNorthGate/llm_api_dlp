@@ -9,10 +9,7 @@ export const useAuthStore = create((set, get) => ({
   isLoading: true,
 
   login: async (code, redirectUri, codeVerifier) => {
-    const authSource = sessionStorage.getItem('auth_source') || 'domain';
-    const clientId = authSource === 'local' ? 'llm-dlp-web-local' : 'llm-dlp-web';
-
-    const data = await authApi.callback(code, redirectUri, codeVerifier, clientId);
+    const data = await authApi.callback(code, redirectUri, codeVerifier);
     localStorage.setItem('access_token', data.access_token);
     if (data.refresh_token) {
       localStorage.setItem('refresh_token', data.refresh_token);

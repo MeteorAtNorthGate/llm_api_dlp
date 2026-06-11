@@ -5,8 +5,7 @@ import { useAuthStore } from '../store/authStore';
 
 const KEYCLOAK_URL = 'http://localhost:8080';
 const REALM = 'llm-dlp';
-const CLIENT_ID_DOMAIN = 'llm-dlp-web';
-const CLIENT_ID_LOCAL = 'llm-dlp-web-local';
+const CLIENT_ID = 'llm-dlp-web';
 
 /** Generate a cryptographically random PKCE code_verifier (43-128 chars). */
 function generateCodeVerifier() {
@@ -37,21 +36,17 @@ export function useAuth() {
     init();
   }, [init]);
 
-  const redirectToLogin = useCallback(async (authSource = 'domain') => {
+  const redirectToLogin = useCallback(async () => {
     const redirectUri = `${window.location.origin}/auth/callback`;
     const codeVerifier = generateCodeVerifier();
     const codeChallenge = await deriveCodeChallenge(codeVerifier);
 
     // Store code_verifier for the callback exchange
     sessionStorage.setItem('pkce_code_verifier', codeVerifier);
-    // Store auth source so the callback can use the correct client_id
-    sessionStorage.setItem('auth_source', authSource);
-
-    const clientId = authSource === 'local' ? CLIENT_ID_LOCAL : CLIENT_ID_DOMAIN;
 
     const authUrl =
       `${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/auth` +
-      `?client_id=${clientId}` +
+      `?client_id=${CLIENT_ID}` +
       `&redirect_uri=${encodeURIComponent(redirectUri)}` +
       `&response_type=code` +
       `&scope=openid profile email` +
