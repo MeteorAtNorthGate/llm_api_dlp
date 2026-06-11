@@ -37,154 +37,11 @@ const EMPTY_FORM = {
   enabled: true,
 };
 
-export default function LdapAdminPage() {
-  const [sources, setSources] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  // Add modal
-  const [showAdd, setShowAdd] = useState(false);
-  const [addForm, setAddForm] = useState({ ...EMPTY_FORM });
-  const [adding, setAdding] = useState(false);
-  const [addError, setAddError] = useState(null);
-  const [showPassword, setShowPassword] = useState(false);
-
-  // Edit modal
-  const [showEdit, setShowEdit] = useState(false);
-  const [editSource, setEditSource] = useState(null);
-  const [editForm, setEditForm] = useState({ ...EMPTY_FORM });
-  const [editing, setEditing] = useState(false);
-  const [editError, setEditError] = useState(null);
-  const [showEditPassword, setShowEditPassword] = useState(false);
-
-  // Delete
-  const [deleteTarget, setDeleteTarget] = useState(null);
-  const [deleting, setDeleting] = useState(false);
-
-  // ── Fetch sources ──────────────────────────────────────
-
-  const fetchSources = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await ldapApi.listSources();
-      setSources(data.sources || []);
-    } catch (err) {
-      setError(err.message || 'Failed to load LDAP sources');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchSources();
-  }, [fetchSources]);
-
-  // ── Add source ─────────────────────────────────────────
-
-  const handleAdd = async () => {
-    setAddError(null);
-    if (!addForm.name || !addForm.host) {
-      setAddError('Auth name and Host address are required.');
-      return;
-    }
-    setAdding(true);
-    try {
-      await ldapApi.createSource(addForm);
-      setShowAdd(false);
-      setAddForm({ ...EMPTY_FORM });
-      setShowPassword(false);
-      await fetchSources();
-    } catch (err) {
-      setAddError(err.message || 'Failed to add LDAP source');
-    } finally {
-      setAdding(false);
-    }
-  };
-
-  // ── Edit source ────────────────────────────────────────
-
-  const openEdit = (source) => {
-    setEditSource(source);
-    setEditForm({
-      auth_type: source.auth_type,
-      name: source.name,
-      security_protocol: source.security_protocol,
-      host: source.host,
-      port: source.port,
-      bind_dn: source.bind_dn,
-      bind_password: '',
-      user_search_base: source.user_search_base,
-      user_filter: source.user_filter,
-      admin_filter: source.admin_filter,
-      username_attr: source.username_attr,
-      first_name_attr: source.first_name_attr,
-      last_name_attr: source.last_name_attr,
-      email_attr: source.email_attr,
-      enabled: source.enabled,
-    });
-    setEditError(null);
-    setShowEditPassword(false);
-    setShowEdit(true);
-  };
-
-  const handleEdit = async () => {
-    setEditError(null);
-    setEditing(true);
-    try {
-      const payload = {};
-      for (const [key, value] of Object.entries(editForm)) {
-        if (key === 'bind_password' && !value) continue; // skip empty password
-        if (value !== editSource[key]) {
-          payload[key] = value;
-        }
-      }
-      if (Object.keys(payload).length === 0) {
-        setShowEdit(false);
-        setEditing(false);
-        return;
-      }
-      await ldapApi.updateSource(editSource.id, payload);
-      setShowEdit(false);
-      setEditSource(null);
-      await fetchSources();
-    } catch (err) {
-      setEditError(err.message || 'Failed to update LDAP source');
-    } finally {
-      setEditing(false);
-    }
-  };
-
-  // ── Delete source ──────────────────────────────────────
-
-  const confirmDelete = async () => {
-    setDeleting(true);
-    try {
-      await ldapApi.deleteSource(deleteTarget.id);
-      setDeleteTarget(null);
-      await fetchSources();
-    } catch (err) {
-      setError(err.message || 'Failed to delete LDAP source');
-      setDeleteTarget(null);
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  // ── Toggle enabled ─────────────────────────────────────
-
-  const toggleEnabled = async (source) => {
-    try {
-      await ldapApi.updateSource(source.id, { enabled: !source.enabled });
-      await fetchSources();
-    } catch (err) {
-      setError(err.message || 'Failed to toggle source');
-    }
-  };
-
-  // ── Form fields component ──────────────────────────────
-
-  const FormFields = ({ form, setForm, showPw, setShowPw, isEdit = false }) => (
+/** Standalone form fields component — extracted to avoid losing
+ *  input focus on every keystroke (nested components are
+ *  recreated on each parent render). */
+function LdapFormFields({ form, setForm, showPw, setShowPw, isEdit = false }) {
+  return (
     <div className="space-y-4">
       {/* Row 1: Auth Type + Auth Name */}
       <div className="grid grid-cols-2 gap-4">
@@ -430,6 +287,152 @@ export default function LdapAdminPage() {
       )}
     </div>
   );
+}
+
+export default function LdapAdminPage() {
+  const [sources, setSources] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Add modal
+  const [showAdd, setShowAdd] = useState(false);
+  const [addForm, setAddForm] = useState({ ...EMPTY_FORM });
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Edit modal
+  const [showEdit, setShowEdit] = useState(false);
+  const [editSource, setEditSource] = useState(null);
+  const [editForm, setEditForm] = useState({ ...EMPTY_FORM });
+  const [editing, setEditing] = useState(false);
+  const [editError, setEditError] = useState(null);
+  const [showEditPassword, setShowEditPassword] = useState(false);
+
+  // Delete
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // ── Fetch sources ──────────────────────────────────────
+
+  const fetchSources = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await ldapApi.listSources();
+      setSources(data.sources || []);
+    } catch (err) {
+      setError(err.message || 'Failed to load LDAP sources');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSources();
+  }, [fetchSources]);
+
+  // ── Add source ─────────────────────────────────────────
+
+  const handleAdd = async () => {
+    setAddError(null);
+    if (!addForm.name || !addForm.host) {
+      setAddError('Auth name and Host address are required.');
+      return;
+    }
+    setAdding(true);
+    try {
+      await ldapApi.createSource(addForm);
+      setShowAdd(false);
+      setAddForm({ ...EMPTY_FORM });
+      setShowPassword(false);
+      await fetchSources();
+    } catch (err) {
+      setAddError(err.message || 'Failed to add LDAP source');
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  // ── Edit source ────────────────────────────────────────
+
+  const openEdit = (source) => {
+    setEditSource(source);
+    setEditForm({
+      auth_type: source.auth_type,
+      name: source.name,
+      security_protocol: source.security_protocol,
+      host: source.host,
+      port: source.port,
+      bind_dn: source.bind_dn,
+      bind_password: '',
+      user_search_base: source.user_search_base,
+      user_filter: source.user_filter,
+      admin_filter: source.admin_filter,
+      username_attr: source.username_attr,
+      first_name_attr: source.first_name_attr,
+      last_name_attr: source.last_name_attr,
+      email_attr: source.email_attr,
+      enabled: source.enabled,
+    });
+    setEditError(null);
+    setShowEditPassword(false);
+    setShowEdit(true);
+  };
+
+  const handleEdit = async () => {
+    setEditError(null);
+    setEditing(true);
+    try {
+      const payload = {};
+      for (const [key, value] of Object.entries(editForm)) {
+        if (key === 'bind_password' && !value) continue; // skip empty password
+        if (value !== editSource[key]) {
+          payload[key] = value;
+        }
+      }
+      if (Object.keys(payload).length === 0) {
+        setShowEdit(false);
+        setEditing(false);
+        return;
+      }
+      await ldapApi.updateSource(editSource.id, payload);
+      setShowEdit(false);
+      setEditSource(null);
+      await fetchSources();
+    } catch (err) {
+      setEditError(err.message || 'Failed to update LDAP source');
+    } finally {
+      setEditing(false);
+    }
+  };
+
+  // ── Delete source ──────────────────────────────────────
+
+  const confirmDelete = async () => {
+    setDeleting(true);
+    try {
+      await ldapApi.deleteSource(deleteTarget.id);
+      setDeleteTarget(null);
+      await fetchSources();
+    } catch (err) {
+      setError(err.message || 'Failed to delete LDAP source');
+      setDeleteTarget(null);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // ── Toggle enabled ─────────────────────────────────────
+
+  const toggleEnabled = async (source) => {
+    try {
+      await ldapApi.updateSource(source.id, { enabled: !source.enabled });
+      await fetchSources();
+    } catch (err) {
+      setError(err.message || 'Failed to toggle source');
+    }
+  };
 
   // ── Render ────────────────────────────────────────────
 
@@ -560,7 +563,7 @@ export default function LdapAdminPage() {
         {/* ── Add Modal ──────────────────────────────────── */}
         <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Add LDAP Auth Source" size="lg">
           <div className="space-y-4">
-            <FormFields form={addForm} setForm={setAddForm} showPw={showPassword} setShowPw={setShowPassword} />
+            <LdapFormFields form={addForm} setForm={setAddForm} showPw={showPassword} setShowPw={setShowPassword} />
 
             {addError && <div className="alert alert-error text-sm"><span>{addError}</span></div>}
 
@@ -585,7 +588,7 @@ export default function LdapAdminPage() {
                 <code className="text-sm">{editSource.host}:{editSource.port}</code>
               </div>
 
-              <FormFields form={editForm} setForm={setEditForm} showPw={showEditPassword} setShowPw={setShowEditPassword} isEdit />
+              <LdapFormFields form={editForm} setForm={setEditForm} showPw={showEditPassword} setShowPw={setShowEditPassword} isEdit />
 
               {editError && <div className="alert alert-error text-sm"><span>{editError}</span></div>}
 
