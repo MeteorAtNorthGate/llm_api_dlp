@@ -222,7 +222,31 @@ async def create_source(
                 detail=f"Keycloak LDAP creation failed: {resp.text}",
             )
 
-    return LdapSourceResponse(**_kc_to_form(resp.json()))
+        # Keycloak may return 201 with an empty body; extract id from
+        # Location header (e.g. .../components/<uuid>) and fetch the new
+        # component.  Fall back to the response body when it is present.
+        if resp.content:
+            created = resp.json()
+        else:
+            loc = resp.headers.get("Location", "")
+            comp_id = loc.rstrip("/").rsplit("/", 1)[-1] if loc else ""
+            if not comp_id:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Keycloak LDAP creation returned empty body and no Location header",
+                )
+            get_resp = await client.get(
+                f"{KC_ADMIN_URL}/components/{comp_id}",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            if get_resp.status_code != 200:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=f"Keycloak LDAP created but fetch failed: {get_resp.text}",
+                )
+            created = get_resp.json()
+
+    return LdapSourceResponse(**_kc_to_form(created))
 
 
 @router.get("/sources/{source_id}", response_model=LdapSourceResponse)
