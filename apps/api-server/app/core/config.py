@@ -47,6 +47,13 @@ class Settings(BaseSettings):
     MAX_FILE_SIZE_MB: int = 20
     MAX_FILES_PER_MESSAGE: int = 5
 
+    # LDAP / Active Directory (optional — only used when LDAP_ENABLED=true)
+    LDAP_ENABLED: bool = False
+    LDAP_URL: str = "ldap://dc01.company.int:389"
+    LDAP_BIND_DN: str = "CN=svc_keycloak,OU=ServiceAccounts,DC=company,DC=int"
+    LDAP_BIND_CREDENTIALS: str = "change-me"
+    LDAP_USERS_DN: str = "OU=Users,DC=company,DC=int"
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
