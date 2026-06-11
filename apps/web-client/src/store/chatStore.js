@@ -198,6 +198,12 @@ export const useChatStore = create((set, get) => ({
       // Reload conversation list to update titles
       get().loadConversations();
 
+      // For new conversations, reload after a delay so the sidebar picks
+      // up the AI-generated title from the background task.
+      setTimeout(() => {
+        get().loadConversations();
+      }, 3000);
+
     } catch (err) {
       console.error('Failed to send message', err);
       set({ isStreaming: false, streamContent: '' });

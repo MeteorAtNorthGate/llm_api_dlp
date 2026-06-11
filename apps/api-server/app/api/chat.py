@@ -1,5 +1,6 @@
 """Chat API endpoints — streaming chat completion and conversation management."""
 
+import asyncio
 import json
 import uuid
 from typing import AsyncGenerator
@@ -125,11 +126,18 @@ async def chat_completions(
         await session.commit()
         await session.refresh(conversation)
 
+    # Determine if this is a new conversation needing AI title generation.
+    # Capture BEFORE the truncation rename below — once renamed, the
+    # title is no longer "New Conversation" and we lose the trigger.
+    should_generate_title = conversation.title == "New Conversation"
+    first_user_msg_content = None
+
     # Rename placeholder when the first real message arrives
     if conversation.title == "New Conversation":
         user_msgs = [m for m in body.messages if m.role == "user"]
         if user_msgs:
-            conversation.title = user_msgs[-1].content[:50]
+            first_user_msg_content = user_msgs[-1].content
+            conversation.title = first_user_msg_content[:50]
 
     # Determine how many user messages already exist in this conversation.
     # (The frontend sends the full history each turn — we only persist NEW ones.)
@@ -228,7 +236,13 @@ async def chat_completions(
 
     if body.stream:
         return StreamingResponse(
-            _stream_response(litellm_payload, conversation.id, session),
+            _stream_response(
+                litellm_payload,
+                conversation.id,
+                session,
+                first_user_message=first_user_msg_content,
+                should_generate_title=should_generate_title,
+            ),
             media_type="text/event-stream",
             headers={
                 "X-Conversation-Id": str(conversation.id),
@@ -267,6 +281,27 @@ async def chat_completions(
             session.add(assistant_msg)
             await session.commit()
 
+            # Fire background title generation (same trigger as streaming path)
+            if should_generate_title and first_user_msg_content:
+                import logging
+
+                _logger = logging.getLogger(__name__)
+                _logger.info(
+                    "Firing background title generation for conversation %s (non-streaming)",
+                    conversation.id,
+                )
+                from app.services.title_service import (
+                    regenerate_conversation_title,
+                )
+
+                asyncio.create_task(
+                    regenerate_conversation_title(
+                        conversation_id=conversation.id,
+                        user_message=first_user_msg_content,
+                        assistant_response=assistant_msg.content,
+                    )
+                )
+
             return {
                 "id": str(conversation.id),
                 "model": data.get("model"),
@@ -279,6 +314,8 @@ async def _stream_response(
     payload: dict,
     conversation_id: uuid.UUID,
     session: AsyncSession,
+    first_user_message: str | None = None,
+    should_generate_title: bool = False,
 ) -> AsyncGenerator[str, None]:
     """Stream SSE events from LiteLLM back to the frontend."""
     full_content = ""
@@ -344,6 +381,27 @@ async def _stream_response(
                 )
                 session.add(assistant_msg)
                 await session.commit()
+
+                # Fire background title generation for new conversations.
+                if should_generate_title and first_user_message:
+                    import logging
+
+                    _logger = logging.getLogger(__name__)
+                    _logger.info(
+                        "Firing background title generation for conversation %s",
+                        conversation_id,
+                    )
+                    from app.services.title_service import (
+                        regenerate_conversation_title,
+                    )
+
+                    asyncio.create_task(
+                        regenerate_conversation_title(
+                            conversation_id=conversation_id,
+                            user_message=first_user_message,
+                            assistant_response=full_content,
+                        )
+                    )
             except Exception:
                 pass
 

@@ -30,7 +30,7 @@ export default function Sidebar() {
           {conversations.map((conv) => (
             <li key={conv.id} className="overflow-hidden">
               <a
-                className={`!grid-cols-[minmax(0,1fr)] w-full min-w-0 overflow-hidden ${
+                className={`group !grid-cols-[minmax(0,1fr)] w-full min-w-0 overflow-hidden ${
                   activeConversationId === conv.id ? 'active' : ''
                 }`}
                 onClick={() => loadConversation(conv.id)}
