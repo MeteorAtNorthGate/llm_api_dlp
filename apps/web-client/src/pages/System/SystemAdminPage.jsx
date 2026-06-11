@@ -1,4 +1,4 @@
-/** SystemAdminPage — manage LLM provider models and API keys.
+/** API Providers Admin Page — manage LLM provider models and API keys.
  *  Only accessible to users in the 'admins' group. */
 
 import { useEffect, useState } from 'react';
@@ -228,7 +228,7 @@ export default function SystemAdminPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">System Administration</h1>
+            <h1 className="text-2xl font-bold">API Providers</h1>
             <p className="text-base-content/60">
               Manage LLM provider models and API keys
             </p>

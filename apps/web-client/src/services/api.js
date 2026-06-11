@@ -93,6 +93,22 @@ export const filesApi = {
     api.delete(`files/${id}`),
 };
 
+// ── Admin (LDAP) ─────────────────────────────────────
+
+export const ldapApi = {
+  listSources: () => api.get('admin/ldap/sources').json(),
+
+  getSource: (id) => api.get(`admin/ldap/sources/${encodeURIComponent(id)}`).json(),
+
+  createSource: (payload) =>
+    api.post('admin/ldap/sources', { json: payload }).json(),
+
+  updateSource: (id, payload) =>
+    api.put(`admin/ldap/sources/${encodeURIComponent(id)}`, { json: payload }).json(),
+
+  deleteSource: (id) => api.delete(`admin/ldap/sources/${encodeURIComponent(id)}`),
+};
+
 // ── Admin (System) ────────────────────────────────────
 
 export const adminApi = {

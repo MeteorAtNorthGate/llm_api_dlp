@@ -116,3 +116,19 @@ async def get_optional_user(
         return await get_current_user(request, credentials)
     except HTTPException:
         return None
+
+
+def is_admin(user_claims: dict) -> bool:
+    """Check if the user belongs to the 'admins' group."""
+    groups = user_claims.get("groups", [])
+    return "admins" in groups
+
+
+def require_admin(user_claims: dict = Depends(get_current_user)) -> dict:
+    """Dependency — raises 403 if user is not an admin."""
+    if not is_admin(user_claims):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only system administrators can access this endpoint",
+        )
+    return user_claims

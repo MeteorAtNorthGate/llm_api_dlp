@@ -22,7 +22,10 @@ export default function Header() {
             <a href="/admin" className="btn btn-ghost btn-sm">API Keys</a>
           )}
           {isAdmin && (
-            <a href="/system" className="btn btn-ghost btn-sm text-primary">System</a>
+            <a href="/api-providers" className="btn btn-ghost btn-sm text-primary">API Providers</a>
+          )}
+          {isAdmin && (
+            <a href="/ldap" className="btn btn-ghost btn-sm text-primary">LDAP</a>
           )}
         </div>
       </div>
@@ -45,7 +48,8 @@ export default function Header() {
               </li>
               <li><a href="/">Chat</a></li>
               {isDeveloper && <li><a href="/admin">API Keys</a></li>}
-              {isAdmin && <li><a href="/system">System Admin</a></li>}
+              {isAdmin && <li><a href="/api-providers">API Providers</a></li>}
+              {isAdmin && <li><a href="/ldap">LDAP Configuration</a></li>}
               <li>
                 <button onClick={logout}>Logout</button>
               </li>

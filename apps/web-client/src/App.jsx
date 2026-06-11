@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage';
 import ChatPage from './pages/Chat/ChatPage';
 import AdminPage from './pages/Admin/AdminPage';
 import SystemAdminPage from './pages/System/SystemAdminPage';
+import LdapAdminPage from './pages/Ldap/LdapAdminPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 export default function App() {
@@ -34,10 +35,18 @@ export default function App() {
           }
         />
         <Route
-          path="/system"
+          path="/api-providers"
           element={
             <ProtectedRoute>
               <SystemAdminPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ldap"
+          element={
+            <ProtectedRoute>
+              <LdapAdminPage />
             </ProtectedRoute>
           }
         />

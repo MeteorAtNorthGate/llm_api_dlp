@@ -11,12 +11,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.security import get_current_user
+from app.core.security import get_current_user, require_admin as _require_admin
 from app.db.models.platform_setting import PlatformSetting
 from app.db.session import get_session
-from app.main import SYSTEM_UTILITY_MODEL_NAME
 
 router = APIRouter()
+
+# imported here to avoid early binding during router init
+SYSTEM_UTILITY_MODEL_NAME = "system-utility"
 
 # ── Provider → litellm model prefix mapping ──────────────────────────
 
@@ -65,25 +67,6 @@ PROVIDER_DEFAULT_BASE: dict[str, str] = {
 PROVIDER_CUSTOM_LLM_PROVIDER: dict[str, str] = {
     "deepseek_for_cc": "anthropic",
 }
-
-# ── Auth helper ──────────────────────────────────────────────────────
-
-
-def _is_admin(user_claims: dict) -> bool:
-    """Check if the user belongs to the 'admins' group."""
-    groups = user_claims.get("groups", [])
-    return "admins" in groups
-
-
-def _require_admin(user_claims: dict = Depends(get_current_user)) -> dict:
-    """Dependency — raises 403 if user is not an admin."""
-    if not _is_admin(user_claims):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only system administrators can access this endpoint",
-        )
-    return user_claims
-
 
 # ── Schemas ──────────────────────────────────────────────────────────
 
