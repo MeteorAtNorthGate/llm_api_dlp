@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     KEYCLOAK_CLIENT_ID: str = "llm-dlp-web"
     KEYCLOAK_CLIENT_ID_LOCAL: str = "llm-dlp-web-local"
     KEYCLOAK_CLIENT_SECRET: str = "change-me"
+    KEYCLOAK_ADMIN: str = "admin"
+    KEYCLOAK_ADMIN_PASSWORD: str = "admin"
 
     # LiteLLM
     LITELLM_BASE_URL: str = "http://localhost:4000"

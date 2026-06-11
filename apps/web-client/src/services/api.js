@@ -107,6 +107,9 @@ export const ldapApi = {
     api.put(`admin/ldap/sources/${encodeURIComponent(id)}`, { json: payload }).json(),
 
   deleteSource: (id) => api.delete(`admin/ldap/sources/${encodeURIComponent(id)}`),
+
+  syncSource: (id) =>
+    api.post(`admin/ldap/sources/${encodeURIComponent(id)}/sync`).json(),
 };
 
 // ── Admin (System) ────────────────────────────────────

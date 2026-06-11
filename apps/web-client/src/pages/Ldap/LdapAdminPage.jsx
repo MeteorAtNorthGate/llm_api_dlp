@@ -1,4 +1,4 @@
-/** LDAP Admin Page — manage domain controller authentication sources.
+/** LDAP Admin Page — manage Keycloak LDAP User Federation via Keycloak REST API.
  *  Only accessible to users in the 'admins' group. */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -7,9 +7,15 @@ import Modal from '../../components/ui/Modal';
 import Spinner from '../../components/ui/Spinner';
 import { ldapApi } from '../../services/api';
 
+const VENDORS = [
+  { value: 'ad', label: 'Active Directory' },
+  { value: 'rhds', label: 'Red Hat Directory Server' },
+  { value: 'tivoli', label: 'IBM Tivoli Directory' },
+  { value: 'other', label: 'Other (OpenLDAP / Generic)' },
+];
+
 const AUTH_TYPES = [
-  { value: 'bind_dn', label: 'LDAP (via BindDN)' },
-  { value: 'principal', label: 'LDAP (via Principal)' },
+  { value: 'simple', label: 'LDAP (via BindDN)' },
   { value: 'anonymous', label: 'LDAP (Anonymous)' },
 ];
 
@@ -19,9 +25,34 @@ const SECURITY_PROTOCOLS = [
   { value: 'starttls', label: 'StartTLS' },
 ];
 
+// Default attribute values per vendor
+const VENDOR_DEFAULTS = {
+  ad: {
+    username_attr: 'sAMAccountName',
+    rdn_attr: 'sAMAccountName',
+    uuid_attr: 'objectGUID',
+  },
+  rhds: {
+    username_attr: 'uid',
+    rdn_attr: 'uid',
+    uuid_attr: 'nsuniqueid',
+  },
+  tivoli: {
+    username_attr: 'uid',
+    rdn_attr: 'uid',
+    uuid_attr: 'ibm-entryuuid',
+  },
+  other: {
+    username_attr: 'uid',
+    rdn_attr: 'uid',
+    uuid_attr: 'entryUUID',
+  },
+};
+
 const EMPTY_FORM = {
-  auth_type: 'bind_dn',
   name: '',
+  vendor: 'ad',
+  auth_type: 'simple',
   security_protocol: 'unencrypted',
   host: '',
   port: 389,
@@ -29,36 +60,43 @@ const EMPTY_FORM = {
   bind_password: '',
   user_search_base: '',
   user_filter: '',
-  admin_filter: '',
-  username_attr: '',
+  username_attr: 'sAMAccountName',
+  rdn_attr: 'sAMAccountName',
+  uuid_attr: 'objectGUID',
   first_name_attr: '',
   last_name_attr: '',
   email_attr: '',
   enabled: true,
 };
 
-/** Standalone form fields component — extracted to avoid losing
- *  input focus on every keystroke (nested components are
- *  recreated on each parent render). */
+// ── Standalone form component (module-level to avoid focus loss) ──────
+
 function LdapFormFields({ form, setForm, showPw, setShowPw, isEdit = false }) {
+  const handleVendorChange = (vendor) => {
+    const defaults = VENDOR_DEFAULTS[vendor] || VENDOR_DEFAULTS.other;
+    setForm((f) => ({
+      ...f,
+      vendor,
+      username_attr: defaults.username_attr,
+      rdn_attr: defaults.rdn_attr,
+      uuid_attr: defaults.uuid_attr,
+    }));
+  };
+
+  // Auto-set port when security protocol changes
+  const handleProtocolChange = (protocol) => {
+    const defaultPorts = { unencrypted: 389, ldaps: 636, starttls: 389 };
+    setForm((f) => ({
+      ...f,
+      security_protocol: protocol,
+      port: defaultPorts[protocol] || 389,
+    }));
+  };
+
   return (
     <div className="space-y-4">
-      {/* Row 1: Auth Type + Auth Name */}
+      {/* Row 1: Name + Vendor */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="form-control">
-          <label className="label">
-            <span className="label-text font-medium">Auth Type</span>
-          </label>
-          <select
-            className="select select-bordered"
-            value={form.auth_type}
-            onChange={(e) => setForm((f) => ({ ...f, auth_type: e.target.value }))}
-          >
-            {AUTH_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>{t.label}</option>
-            ))}
-          </select>
-        </div>
         <div className="form-control">
           <label className="label">
             <span className="label-text font-medium">Auth Name *</span>
@@ -76,10 +114,43 @@ function LdapFormFields({ form, setForm, showPw, setShowPw, isEdit = false }) {
             </span>
           </label>
         </div>
+        <div className="form-control">
+          <label className="label">
+            <span className="label-text font-medium">Vendor</span>
+          </label>
+          <select
+            className="select select-bordered"
+            value={form.vendor}
+            onChange={(e) => handleVendorChange(e.target.value)}
+          >
+            {VENDORS.map((v) => (
+              <option key={v.value} value={v.value}>{v.label}</option>
+            ))}
+          </select>
+          <label className="label">
+            <span className="label-text-alt text-base-content/50">
+              Determines default attribute mappings
+            </span>
+          </label>
+        </div>
       </div>
 
-      {/* Row 2: Security Protocol + Host + Port */}
-      <div className="grid grid-cols-3 gap-4">
+      {/* Row 2: Auth Type + Security Protocol */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="form-control">
+          <label className="label">
+            <span className="label-text font-medium">Auth Type</span>
+          </label>
+          <select
+            className="select select-bordered"
+            value={form.auth_type}
+            onChange={(e) => setForm((f) => ({ ...f, auth_type: e.target.value }))}
+          >
+            {AUTH_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </select>
+        </div>
         <div className="form-control">
           <label className="label">
             <span className="label-text font-medium">Security Protocol</span>
@@ -87,14 +158,18 @@ function LdapFormFields({ form, setForm, showPw, setShowPw, isEdit = false }) {
           <select
             className="select select-bordered"
             value={form.security_protocol}
-            onChange={(e) => setForm((f) => ({ ...f, security_protocol: e.target.value }))}
+            onChange={(e) => handleProtocolChange(e.target.value)}
           >
             {SECURITY_PROTOCOLS.map((p) => (
               <option key={p.value} value={p.value}>{p.label}</option>
             ))}
           </select>
         </div>
-        <div className="form-control">
+      </div>
+
+      {/* Row 3: Host + Port */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="form-control col-span-2">
           <label className="label">
             <span className="label-text font-medium">Host Address *</span>
           </label>
@@ -108,19 +183,19 @@ function LdapFormFields({ form, setForm, showPw, setShowPw, isEdit = false }) {
         </div>
         <div className="form-control">
           <label className="label">
-            <span className="label-text font-medium">Host Port</span>
+            <span className="label-text font-medium">Port</span>
           </label>
           <input
             type="number"
             className="input input-bordered"
-            placeholder="e.g., 389 or 636"
+            placeholder="389 or 636"
             value={form.port}
             onChange={(e) => setForm((f) => ({ ...f, port: parseInt(e.target.value) || 389 }))}
           />
         </div>
       </div>
 
-      {/* Row 3: Bind DN */}
+      {/* Row 4: Bind DN */}
       <div className="form-control">
         <label className="label">
           <span className="label-text font-medium">Bind DN</span>
@@ -128,18 +203,18 @@ function LdapFormFields({ form, setForm, showPw, setShowPw, isEdit = false }) {
         <input
           type="text"
           className="input input-bordered font-mono text-sm"
-          placeholder="e.g., cn=Search,dc=mydomain,dc=com"
+          placeholder="e.g., CN=svc_keycloak,OU=ServiceAccounts,DC=mydomain,DC=com"
           value={form.bind_dn}
           onChange={(e) => setForm((f) => ({ ...f, bind_dn: e.target.value }))}
         />
         <label className="label">
           <span className="label-text-alt text-base-content/50">
-            You can use '%s' as a placeholder for the username, e.g., DOM\%s
+            Use '%s' as username placeholder, e.g., DOM\%s or uid=%s,ou=Users,dc=mydomain,dc=com
           </span>
         </label>
       </div>
 
-      {/* Row 4: Bind Password */}
+      {/* Row 5: Bind Password */}
       <div className="form-control">
         <label className="label">
           <span className="label-text font-medium">
@@ -150,107 +225,113 @@ function LdapFormFields({ form, setForm, showPw, setShowPw, isEdit = false }) {
           <input
             type={showPw ? 'text' : 'password'}
             className="input input-bordered join-item flex-1 font-mono"
-            placeholder={isEdit ? 'Leave blank to keep current password' : 'Enter bind password'}
+            placeholder={isEdit ? 'Leave blank to keep current' : 'Enter bind password'}
             value={form.bind_password}
             onChange={(e) => setForm((f) => ({ ...f, bind_password: e.target.value }))}
           />
-          <button
-            type="button"
-            className="btn btn-outline join-item"
-            onClick={() => setShowPw((v) => !v)}
-          >
+          <button type="button" className="btn btn-outline join-item" onClick={() => setShowPw((v) => !v)}>
             {showPw ? 'Hide' : 'Show'}
           </button>
         </div>
         <label className="label">
           <span className="label-text-alt text-warning">
-            ⚠ Warning: This password will be stored in plaintext in the database. Do not use a high-privilege account!
+            ⚠ Warning: This password is stored in Keycloak's database in reversible form. Do not use a high-privilege account!
           </span>
         </label>
       </div>
 
-      {/* Row 5: User Search Base */}
-      <div className="form-control">
-        <label className="label">
-          <span className="label-text font-medium">User Search Base</span>
-        </label>
-        <input
-          type="text"
-          className="input input-bordered font-mono text-sm"
-          placeholder="e.g., ou=Users,dc=mydomain,dc=com"
-          value={form.user_search_base}
-          onChange={(e) => setForm((f) => ({ ...f, user_search_base: e.target.value }))}
-        />
-      </div>
-
-      {/* Row 6: User Filter + Admin Filter */}
+      {/* Row 6: User Search Base + User Filter */}
       <div className="grid grid-cols-2 gap-4">
         <div className="form-control">
           <label className="label">
-            <span className="label-text font-medium">User Filter Rule</span>
+            <span className="label-text font-medium">User Search Base</span>
           </label>
           <input
             type="text"
             className="input input-bordered font-mono text-sm"
-            placeholder="e.g., (&(objectClass=posixAccount)(uid=%s))"
-            value={form.user_filter}
-            onChange={(e) => setForm((f) => ({ ...f, user_filter: e.target.value }))}
+            placeholder="e.g., OU=Users,DC=mydomain,DC=com"
+            value={form.user_search_base}
+            onChange={(e) => setForm((f) => ({ ...f, user_search_base: e.target.value }))}
           />
         </div>
         <div className="form-control">
           <label className="label">
-            <span className="label-text font-medium">Admin Filter Rule</span>
+            <span className="label-text font-medium">Custom User Filter</span>
           </label>
           <input
             type="text"
             className="input input-bordered font-mono text-sm"
-            placeholder="e.g., (memberOf=cn=Admins,dc=mydomain,dc=com)"
-            value={form.admin_filter}
-            onChange={(e) => setForm((f) => ({ ...f, admin_filter: e.target.value }))}
+            placeholder="e.g., (&amp;(objectClass=person)(uid=%s))"
+            value={form.user_filter}
+            onChange={(e) => setForm((f) => ({ ...f, user_filter: e.target.value }))}
           />
+          <label className="label">
+            <span className="label-text-alt text-base-content/50">
+              Additional LDAP filter appended to the base search
+            </span>
+          </label>
         </div>
       </div>
 
-      {/* Row 7: Attribute mappings */}
+      {/* Row 7: LDAP Attribute Mapping (core) */}
       <div className="bg-base-200 rounded-lg p-4">
-        <h4 className="text-sm font-semibold mb-3">Attribute Mapping</h4>
-        <div className="grid grid-cols-2 gap-4">
+        <h4 className="text-sm font-semibold mb-3">Core LDAP Attributes</h4>
+        <div className="grid grid-cols-3 gap-4">
           <div className="form-control">
             <label className="label">
               <span className="label-text font-medium">Username Attribute</span>
             </label>
             <input
               type="text"
-              className="input input-bordered input-sm"
-              placeholder="Leave empty to use login username"
+              className="input input-bordered input-sm font-mono"
               value={form.username_attr}
               onChange={(e) => setForm((f) => ({ ...f, username_attr: e.target.value }))}
             />
             <label className="label">
               <span className="label-text-alt text-base-content/50">
-                Leave empty to use the login username as-is
+                Defaults set by vendor
               </span>
             </label>
           </div>
           <div className="form-control">
             <label className="label">
-              <span className="label-text font-medium">Email Attribute</span>
+              <span className="label-text font-medium">RDN Attribute</span>
             </label>
             <input
               type="text"
-              className="input input-bordered input-sm"
-              placeholder="e.g., mail"
-              value={form.email_attr}
-              onChange={(e) => setForm((f) => ({ ...f, email_attr: e.target.value }))}
+              className="input input-bordered input-sm font-mono"
+              value={form.rdn_attr}
+              onChange={(e) => setForm((f) => ({ ...f, rdn_attr: e.target.value }))}
             />
           </div>
+          <div className="form-control">
+            <label className="label">
+              <span className="label-text font-medium">UUID Attribute</span>
+            </label>
+            <input
+              type="text"
+              className="input input-bordered input-sm font-mono"
+              value={form.uuid_attr}
+              onChange={(e) => setForm((f) => ({ ...f, uuid_attr: e.target.value }))}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Row 8: User Attribute Mappers (optional) */}
+      <div className="bg-base-200 rounded-lg p-4">
+        <h4 className="text-sm font-semibold mb-3">
+          User Attribute Mapping{' '}
+          <span className="text-base-content/50 font-normal">(creates Keycloak mappers)</span>
+        </h4>
+        <div className="grid grid-cols-3 gap-4">
           <div className="form-control">
             <label className="label">
               <span className="label-text font-medium">First Name Attribute</span>
             </label>
             <input
               type="text"
-              className="input input-bordered input-sm"
+              className="input input-bordered input-sm font-mono"
               placeholder="e.g., givenName"
               value={form.first_name_attr}
               onChange={(e) => setForm((f) => ({ ...f, first_name_attr: e.target.value }))}
@@ -262,16 +343,33 @@ function LdapFormFields({ form, setForm, showPw, setShowPw, isEdit = false }) {
             </label>
             <input
               type="text"
-              className="input input-bordered input-sm"
+              className="input input-bordered input-sm font-mono"
               placeholder="e.g., sn"
               value={form.last_name_attr}
               onChange={(e) => setForm((f) => ({ ...f, last_name_attr: e.target.value }))}
             />
           </div>
+          <div className="form-control">
+            <label className="label">
+              <span className="label-text font-medium">Email Attribute</span>
+            </label>
+            <input
+              type="text"
+              className="input input-bordered input-sm font-mono"
+              placeholder="e.g., mail"
+              value={form.email_attr}
+              onChange={(e) => setForm((f) => ({ ...f, email_attr: e.target.value }))}
+            />
+          </div>
         </div>
+        <label className="label">
+          <span className="label-text-alt text-base-content/50">
+            Leave empty to skip mapper creation. Keycloak auto-maps common attributes based on vendor.
+          </span>
+        </label>
       </div>
 
-      {/* Enabled toggle */}
+      {/* Enabled toggle (edit mode) */}
       {isEdit && (
         <div className="form-control">
           <label className="label cursor-pointer justify-start gap-3">
@@ -288,6 +386,8 @@ function LdapFormFields({ form, setForm, showPw, setShowPw, isEdit = false }) {
     </div>
   );
 }
+
+// ── Main page component ──────────────────────────────────────────────
 
 export default function LdapAdminPage() {
   const [sources, setSources] = useState([]);
@@ -359,21 +459,23 @@ export default function LdapAdminPage() {
   const openEdit = (source) => {
     setEditSource(source);
     setEditForm({
-      auth_type: source.auth_type,
-      name: source.name,
-      security_protocol: source.security_protocol,
-      host: source.host,
-      port: source.port,
-      bind_dn: source.bind_dn,
+      name: source.name || '',
+      vendor: source.vendor || 'ad',
+      auth_type: source.auth_type || 'simple',
+      security_protocol: source.security_protocol || 'unencrypted',
+      host: source.host || '',
+      port: source.port || 389,
+      bind_dn: source.bind_dn || '',
       bind_password: '',
-      user_search_base: source.user_search_base,
-      user_filter: source.user_filter,
-      admin_filter: source.admin_filter,
-      username_attr: source.username_attr,
-      first_name_attr: source.first_name_attr,
-      last_name_attr: source.last_name_attr,
-      email_attr: source.email_attr,
-      enabled: source.enabled,
+      user_search_base: source.user_search_base || '',
+      user_filter: source.user_filter || '',
+      username_attr: source.username_attr || '',
+      rdn_attr: source.rdn_attr || '',
+      uuid_attr: source.uuid_attr || '',
+      first_name_attr: source.first_name_attr || '',
+      last_name_attr: source.last_name_attr || '',
+      email_attr: source.email_attr || '',
+      enabled: source.enabled !== false,
     });
     setEditError(null);
     setShowEditPassword(false);
@@ -386,8 +488,8 @@ export default function LdapAdminPage() {
     try {
       const payload = {};
       for (const [key, value] of Object.entries(editForm)) {
-        if (key === 'bind_password' && !value) continue; // skip empty password
-        if (value !== editSource[key]) {
+        if (key === 'bind_password' && !value) continue;
+        if (editSource[key] !== value) {
           payload[key] = value;
         }
       }
@@ -434,6 +536,18 @@ export default function LdapAdminPage() {
     }
   };
 
+  // ── Trigger sync ───────────────────────────────────────
+
+  const triggerSync = async (source) => {
+    try {
+      await ldapApi.syncSource(source.id);
+      setError(`Sync triggered for "${source.name || source.id}". Check Keycloak for progress.`);
+      setTimeout(() => setError(null), 5000);
+    } catch (err) {
+      setError(err.message || 'Failed to trigger sync');
+    }
+  };
+
   // ── Render ────────────────────────────────────────────
 
   return (
@@ -444,7 +558,7 @@ export default function LdapAdminPage() {
           <div>
             <h1 className="text-2xl font-bold">LDAP Configuration</h1>
             <p className="text-base-content/60">
-              Manage domain controller authentication sources for the login page
+              Manage Keycloak LDAP User Federation sources — changes take effect on next login
             </p>
           </div>
           <button
@@ -460,9 +574,9 @@ export default function LdapAdminPage() {
           </button>
         </div>
 
-        {/* Error banner */}
+        {/* Banner — can be error or info */}
         {error && (
-          <div className="alert alert-error">
+          <div className={`alert ${error.startsWith('Sync triggered') ? 'alert-info' : 'alert-error'}`}>
             <span>{error}</span>
             <button className="btn btn-ghost btn-xs" onClick={() => setError(null)}>✕</button>
           </div>
@@ -474,7 +588,7 @@ export default function LdapAdminPage() {
         ) : sources.length === 0 ? (
           <div className="text-center py-16 text-base-content/50 border border-dashed border-base-300 rounded-lg">
             <p className="text-lg font-medium">No LDAP sources configured</p>
-            <p className="text-sm mt-1">Add your first LDAP authentication source to get started</p>
+            <p className="text-sm mt-1">Add an LDAP authentication source to enable domain login</p>
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
@@ -485,6 +599,9 @@ export default function LdapAdminPage() {
                     <div>
                       <h3 className="font-bold text-lg">{s.name || 'Unnamed Source'}</h3>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className="badge badge-outline badge-sm">
+                          {VENDORS.find((v) => v.value === s.vendor)?.label || s.vendor}
+                        </span>
                         <span className="badge badge-outline badge-sm">
                           {AUTH_TYPES.find((t) => t.value === s.auth_type)?.label || s.auth_type}
                         </span>
@@ -519,22 +636,28 @@ export default function LdapAdminPage() {
                     )}
                     {s.user_filter && (
                       <div>
-                        <span className="font-medium">User Filter:</span>{' '}
+                        <span className="font-medium">Filter:</span>{' '}
                         <code className="text-xs">{s.user_filter}</code>
                       </div>
                     )}
+                    <div>
+                      <span className="font-medium">Username attr:</span>{' '}
+                      <code className="text-xs">{s.username_attr || '(login username)'}</code>
+                    </div>
                     {s.bind_password_set && (
                       <div>
                         <span className="font-medium">Password:</span> ●●●●●●●● (set)
                       </div>
                     )}
-                    <div>
-                      <span className="font-medium">ID:</span>{' '}
-                      <code className="text-xs">{s.id?.slice(0, 12)}...</code>
-                    </div>
                   </div>
 
                   <div className="card-actions justify-end mt-3 gap-2">
+                    <button
+                      className="btn btn-outline btn-xs"
+                      onClick={() => triggerSync(s)}
+                    >
+                      Sync
+                    </button>
                     <button
                       className={`btn btn-xs ${s.enabled ? 'btn-outline btn-warning' : 'btn-outline btn-success'}`}
                       onClick={() => toggleEnabled(s)}
@@ -583,12 +706,18 @@ export default function LdapAdminPage() {
             <div className="space-y-4">
               <div className="flex items-center gap-3 p-3 bg-base-200 rounded-lg">
                 <span className="badge badge-outline">
-                  {AUTH_TYPES.find((t) => t.value === editSource.auth_type)?.label || editSource.auth_type}
+                  {VENDORS.find((v) => v.value === editSource.vendor)?.label || editSource.vendor}
                 </span>
                 <code className="text-sm">{editSource.host}:{editSource.port}</code>
               </div>
 
-              <LdapFormFields form={editForm} setForm={setEditForm} showPw={showEditPassword} setShowPw={setShowEditPassword} isEdit />
+              <LdapFormFields
+                form={editForm}
+                setForm={setEditForm}
+                showPw={showEditPassword}
+                setShowPw={setShowEditPassword}
+                isEdit
+              />
 
               {editError && <div className="alert alert-error text-sm"><span>{editError}</span></div>}
 
@@ -614,7 +743,8 @@ export default function LdapAdminPage() {
                 <div>
                   <p className="font-bold">Remove "{deleteTarget.name || 'Unnamed Source'}"?</p>
                   <p className="text-sm">
-                    Users will no longer be able to authenticate via this LDAP source. This action cannot be undone.
+                    This deletes the Keycloak LDAP User Storage Provider and all its mappers.
+                    Users will no longer be able to authenticate via this LDAP source.
                   </p>
                 </div>
               </div>
