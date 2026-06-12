@@ -32,6 +32,7 @@ docker save $IMAGES | gzip > $TAR_NAME
 echo "🚚 [5/6] 传输文件到服务器 $REMOTE_HOST..."
 ssh $SSH_OPTS $REMOTE_USER@$REMOTE_HOST "mkdir -p $REMOTE_DIR/infra"
 scp $SSH_OPTS $TAR_NAME $COMPOSE_CLOUD $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/infra/
+scp $SSH_OPTS infra/.env.cloud $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/infra/ || echo "⚠️  .env.cloud 不存在，请先创建"
 
 echo "🚀 [6/6] 在服务器上部署 Web Client 更新..."
 ssh $SSH_OPTS $REMOTE_USER@$REMOTE_HOST << EOF
@@ -42,8 +43,9 @@ ssh $SSH_OPTS $REMOTE_USER@$REMOTE_HOST << EOF
     echo "--- 正在重启前端容器 (不影响后端) ---"
     docker compose -f $COMPOSE_CLOUD --env-file infra/.env.cloud up -d --no-deps --force-recreate web-client
 
-    echo "--- 清理服务器临时文件 ---"
+    echo "--- 清理服务器临时文件和敏感配置 ---"
     rm $TAR_NAME
+    rm infra/.env.cloud
     docker image prune -f
 EOF
 

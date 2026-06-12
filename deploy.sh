@@ -82,8 +82,9 @@ ssh $SSH_OPTS $REMOTE_USER@$REMOTE_HOST << EOF
     docker compose -f $COMPOSE_CLOUD --env-file infra/.env.cloud down
     docker compose -f $COMPOSE_CLOUD --env-file infra/.env.cloud up -d
 
-    echo "--- 清理服务器临时文件 ---"
+    echo "--- 清理服务器临时文件和敏感配置 ---"
     rm $TAR_NAME
+    rm infra/.env.cloud
     docker image prune -f
 EOF
 
