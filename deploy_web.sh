@@ -15,8 +15,10 @@ SSH_OPTS="-o ControlMaster=auto -o ControlPath=/tmp/ssh-deploy-$$-%r@%h:%p -o Co
 # 设置错误即停止
 set -e
 
-echo "📝 [1/6] 注入 Git Hash 版本信息..."
+echo "📝 [1/6] 注入构建变量..."
+VITE_KC_URL=$(grep -oP '^VITE_KEYCLOAK_URL=\K.*' infra/.env.cloud 2>/dev/null || echo "http://localhost:8080")
 echo "VITE_GIT_HASH=$(git rev-parse --short HEAD)" > apps/web-client/.env.local
+echo "VITE_KEYCLOAK_URL=$VITE_KC_URL" >> apps/web-client/.env.local
 
 echo "📦 [2/6] 开始构建 Web Client Docker 镜像..."
 DOCKER_BUILDKIT=0 docker compose -f $COMPOSE_LOCAL build web-client

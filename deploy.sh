@@ -19,21 +19,26 @@ set -e
 
 # --- 本地准备工作 ---
 
-echo "📦 [1/6] 确保外部依赖镜像已缓存..."
+echo "📦 [1/7] 确保外部依赖镜像已缓存..."
 for img in $EXTERNAL_IMAGES; do
     echo "  检查 $img ..."
     docker pull "$img" || echo "  ⚠️  无法拉取 $img，将使用本地缓存"
 done
 
-echo "📦 [2/6] 开始构建自建 Docker 镜像..."
+echo "📝 [2/7] 注入前端构建变量..."
+VITE_KC_URL=$(grep -oP '^VITE_KEYCLOAK_URL=\K.*' infra/.env.cloud 2>/dev/null || echo "http://localhost:8080")
+echo "VITE_GIT_HASH=$(git rev-parse --short HEAD)" > apps/web-client/.env.local
+echo "VITE_KEYCLOAK_URL=$VITE_KC_URL" >> apps/web-client/.env.local
+
+echo "📦 [3/7] 开始构建自建 Docker 镜像..."
 DOCKER_BUILDKIT=0 docker compose -f $COMPOSE_LOCAL build
 
-echo "🧹 [3/6] 清理构建缓存..."
+echo "🧹 [4/7] 清理构建缓存..."
 docker builder prune -f
 
 # --- 判断云端是否需要第三方镜像 ---
 
-echo "🔍 [4/6] 检查云端第三方镜像状态..."
+echo "🔍 [5/7] 检查云端第三方镜像状态..."
 if ssh $SSH_OPTS $REMOTE_USER@$REMOTE_HOST "test -f $REMOTE_DIR/$EXTERNAL_SENTINEL" 2>/dev/null; then
     echo "  ✅ 云端已有第三方镜像（$EXTERNAL_SENTINEL 存在），跳过第三方镜像打包"
     IMAGES="$SELF_BUILT_IMAGES"
@@ -44,11 +49,11 @@ else
     LOAD_EXTERNAL=true
 fi
 
-echo "💾 [5/6] 导出并压缩镜像..."
+echo "💾 [6/7] 导出并压缩镜像..."
 echo "  打包: $IMAGES"
 docker save $IMAGES | gzip > $TAR_NAME
 
-echo "🚚 [6/6] 传输文件到服务器 $REMOTE_HOST..."
+echo "🚚 [7/7] 传输文件到服务器 $REMOTE_HOST..."
 scp $SSH_OPTS $TAR_NAME $COMPOSE_CLOUD $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/infra/
 
 echo "📁       上传配置文件..."

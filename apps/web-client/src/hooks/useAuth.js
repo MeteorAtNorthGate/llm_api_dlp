@@ -3,7 +3,7 @@
 import { useEffect, useCallback } from 'react';
 import { useAuthStore } from '../store/authStore';
 
-const KEYCLOAK_URL = 'http://localhost:8080';
+const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:8080';
 const REALM = 'llm-dlp';
 const CLIENT_ID = 'llm-dlp-web';
 

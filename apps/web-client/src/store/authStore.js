@@ -36,7 +36,7 @@ export const useAuthStore = create((set, get) => ({
     // Build Keycloak logout URL with id_token_hint so Keycloak
     // properly terminates the SSO session. Falls back to access_token
     // if id_token wasn't returned (some OIDC flows omit it).
-    const keycloakUrl = 'http://localhost:8080';
+    const keycloakUrl = import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:8080';
     const realm = 'llm-dlp';
     const postLogoutUri = `${window.location.origin}/login?logged_out=true`;
     let logoutUrl = `${keycloakUrl}/realms/${realm}/protocol/openid-connect/logout?post_logout_redirect_uri=${encodeURIComponent(postLogoutUri)}`;
