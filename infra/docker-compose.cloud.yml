@@ -153,7 +153,7 @@ services:
     restart: unless-stopped
     networks:
       - default
-      - npm_default
+      - nginx-proxy-manager_default
     depends_on:
       - api-server
 
@@ -162,5 +162,5 @@ volumes:
   minio_data:
 
 networks:
-  npm_default:
+  nginx-proxy-manager_default:
     external: true

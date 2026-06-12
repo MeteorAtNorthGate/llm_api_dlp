@@ -38,13 +38,13 @@ echo "🚀 [6/6] 在服务器上部署 Web Client 更新..."
 ssh $SSH_OPTS $REMOTE_USER@$REMOTE_HOST << EOF
     cd $REMOTE_DIR
     echo "--- 正在加载前端镜像 ---"
-    gunzip -c $TAR_NAME | docker load
+    gunzip -c infra/$TAR_NAME | docker load
 
     echo "--- 正在重启前端容器 (不影响后端) ---"
     docker compose -f $COMPOSE_CLOUD --env-file infra/.env.cloud up -d --no-deps --force-recreate web-client
 
     echo "--- 清理服务器临时文件和敏感配置 ---"
-    rm $TAR_NAME
+    rm infra/$TAR_NAME
     rm infra/.env.cloud
     docker image prune -f
 EOF
