@@ -42,7 +42,7 @@ services:
         condition: service_healthy
 
   keycloak-setup:
-    image: python:3-alpine
+    image: python:3.14-slim
     container_name: llm-dlp-keycloak-setup
     restart: "no"
     entrypoint: ["/bin/sh", "-c", "apk add --no-cache curl && /scripts/setup-ldap.sh"]
@@ -72,6 +72,7 @@ services:
       DATABASE_URL: postgresql://llmuser:llmpass@postgres:5432/litellm
       LITELLM_MASTER_KEY: sk-master-key-change-me
       LITELLM_SALT_KEY: salt-key-change-me
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       STORE_MODEL_IN_DB: "true"
       SERVER_ROOT_PATH: ""
     ports:
@@ -86,7 +87,7 @@ services:
       - /app/config.yaml
 
   minio:
-    image: quay.io/minio/minio:latest
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
     container_name: llm-dlp-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"

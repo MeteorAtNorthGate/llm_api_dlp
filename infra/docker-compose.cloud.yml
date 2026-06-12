@@ -1,10 +1,10 @@
 # 云端部署 compose —— 配合 jc21/nginx-proxy-manager 使用
 # 部署步骤:
 #   1. 本地构建:  make build-cloud
-#   2. 上传:      scp infra/images.tar.gz infra/docker-compose.cloud.yml infra/.env.cloud user@host:~/llm-dlp/
-#   3. 上传配置:  scp -r infra/keycloak/ infra/litellm/ user@host:~/llm-dlp/infra/
-#   4. 云端加载:  ssh user@host "cd ~/llm-dlp && docker load -i infra/images.tar.gz"
-#   5. 云端启动:  ssh user@host "cd ~/llm-dlp && docker compose -f infra/docker-compose.cloud.yml --env-file infra/.env.cloud up -d"
+#   2. 上传:      scp infra/images.tar.gz infra/docker-compose.cloud.yml infra/.env.cloud user@host:/home/devuser/projects/LLM_API/
+#   3. 上传配置:  scp -r infra/keycloak/ infra/litellm/ user@host:/home/devuser/projects/LLM_API/infra/
+#   4. 云端加载:  ssh user@host "cd /home/devuser/projects/LLM_API && docker load -i infra/images.tar.gz"
+#   5. 云端启动:  ssh user@host "cd /home/devuser/projects/LLM_API && docker compose -f infra/docker-compose.cloud.yml --env-file infra/.env.cloud up -d"
 #   6. Keycloak:  登录 admin 控制台，将云端域名加入 llm-dlp-web 客户端的 redirectUris / webOrigins
 #
 # NPM 反代配置:
@@ -56,7 +56,7 @@ services:
         condition: service_healthy
 
   keycloak-setup:
-    image: python:3-alpine
+    image: python:3.14-slim
     container_name: llm-dlp-keycloak-setup
     restart: "no"
     entrypoint: ["/bin/sh", "-c", "apk add --no-cache curl && /scripts/setup-ldap.sh"]
@@ -86,8 +86,7 @@ services:
       DATABASE_URL: postgresql://llmuser:${POSTGRES_PASSWORD:-llmpass}@postgres:5432/litellm
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-master-key-change-me}
       LITELLM_SALT_KEY: ${LITELLM_SALT_KEY:-salt-key-change-me}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      QWEN_API_KEY: ${QWEN_API_KEY}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       STORE_MODEL_IN_DB: "true"
       SERVER_ROOT_PATH: ""
     volumes:
@@ -100,7 +99,7 @@ services:
       - /app/config.yaml
 
   minio:
-    image: quay.io/minio/minio:latest
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
     container_name: llm-dlp-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
@@ -131,6 +130,7 @@ services:
       APP_SECRET_KEY: ${APP_SECRET_KEY}
       APP_LOG_LEVEL: ${APP_LOG_LEVEL:-INFO}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       MINIO_ENDPOINT: ${MINIO_ENDPOINT:-minio:9000}
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}

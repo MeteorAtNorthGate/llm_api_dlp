@@ -4,45 +4,82 @@
 REMOTE_USER="devuser"
 REMOTE_HOST="10.10.10.86"
 REMOTE_DIR="/home/devuser/projects/LLM_API"
-IMAGES="llm-dlp-api:latest llm-dlp-web:latest"
+SELF_BUILT_IMAGES="llm-dlp-api:latest llm-dlp-web:latest"
+EXTERNAL_IMAGES="postgres:17-alpine quay.io/keycloak/keycloak:26.6.3 python:3.14-slim ghcr.io/berriai/litellm:v1.87.1 quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z"
 TAR_NAME="llm_dlp_images.tar.gz"
+EXTERNAL_SENTINEL=".external-images-loaded"
 COMPOSE_LOCAL="infra/docker-compose.yml"
 COMPOSE_CLOUD="infra/docker-compose.cloud.yml"
 
 # 设置错误即停止
 set -e
 
-echo "📦 [1/6] 开始构建全部 Docker 镜像..."
+# --- 本地准备工作 ---
+
+echo "📦 [1/6] 确保外部依赖镜像已缓存..."
+for img in $EXTERNAL_IMAGES; do
+    echo "  检查 $img ..."
+    docker pull "$img" || echo "  ⚠️  无法拉取 $img，将使用本地缓存"
+done
+
+echo "📦 [2/6] 开始构建自建 Docker 镜像..."
 DOCKER_BUILDKIT=0 docker compose -f $COMPOSE_LOCAL build
 
-echo "🧹 [2/6] 清理构建缓存..."
+echo "🧹 [3/6] 清理构建缓存..."
 docker builder prune -f
 
-echo "💾 [3/6] 导出并压缩镜像 (使用 gzip 提速)..."
+# --- 判断云端是否需要第三方镜像 ---
+
+echo "🔍 [4/6] 检查云端第三方镜像状态..."
+if ssh $REMOTE_USER@$REMOTE_HOST "test -f $REMOTE_DIR/$EXTERNAL_SENTINEL" 2>/dev/null; then
+    echo "  ✅ 云端已有第三方镜像（$EXTERNAL_SENTINEL 存在），跳过第三方镜像打包"
+    IMAGES="$SELF_BUILT_IMAGES"
+    LOAD_EXTERNAL=false
+else
+    echo "  ⚠️  云端未部署过第三方镜像，全量打包"
+    IMAGES="$SELF_BUILT_IMAGES $EXTERNAL_IMAGES"
+    LOAD_EXTERNAL=true
+fi
+
+echo "💾 [5/6] 导出并压缩镜像..."
+echo "  打包: $IMAGES"
 docker save $IMAGES | gzip > $TAR_NAME
 
-echo "🚚 [4/6] 传输文件到服务器 $REMOTE_HOST..."
+echo "🚚 [6/6] 传输文件到服务器 $REMOTE_HOST..."
 scp $TAR_NAME $COMPOSE_CLOUD $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/
 
-echo "📁 [5/6] 首次部署时上传配置文件 (如已上传可跳过)..."
+echo "📁       上传配置文件..."
 ssh $REMOTE_USER@$REMOTE_HOST "mkdir -p $REMOTE_DIR/infra/keycloak $REMOTE_DIR/infra/litellm"
-scp infra/.env.cloud $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/infra/ 2>/dev/null || echo "⚠️  .env.cloud 不存在，请先创建"
-scp -r infra/keycloak/llm-dlp-realm.json $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/infra/keycloak/ 2>/dev/null || true
-scp -r infra/litellm/config.yaml $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/infra/litellm/ 2>/dev/null || true
+scp infra/.env.cloud $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/infra/ || echo "⚠️  .env.cloud 不存在，请先创建"
+scp -r infra/keycloak/llm-dlp-realm.json $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/infra/keycloak/ || true
+scp -r infra/litellm/config.yaml $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/infra/litellm/ || true
 
-echo "🚀 [6/6] 在服务器上部署更新..."
+# --- 云端部署 ---
+
+echo "🚀 在服务器上部署更新..."
 ssh $REMOTE_USER@$REMOTE_HOST << EOF
+    set -e
     cd $REMOTE_DIR
+
     echo "--- 正在加载镜像 ---"
     gunzip -c $TAR_NAME | docker load
+
+    # 第三方镜像加载成功后打标记（后续部署跳过）
+    if [ "$LOAD_EXTERNAL" = "true" ]; then
+        touch $EXTERNAL_SENTINEL
+        echo "--- 已创建第三方镜像标记: $EXTERNAL_SENTINEL ---"
+    fi
+
     echo "--- 正在重启全部容器 ---"
     docker compose -f $COMPOSE_CLOUD --env-file infra/.env.cloud down
     docker compose -f $COMPOSE_CLOUD --env-file infra/.env.cloud up -d
+
     echo "--- 清理服务器临时文件 ---"
     rm $TAR_NAME
     docker image prune -f
 EOF
 
+echo ""
 echo "✅ 部署全部完成！"
 
 # 可选：清理本地生成的压缩包

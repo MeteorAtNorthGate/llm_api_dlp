@@ -28,16 +28,16 @@ down:           ## Stop all local services
 
 build-cloud:    ## Build images and package for cloud (output: infra/images.tar.gz)
 	DOCKER_BUILDKIT=0 docker compose -f infra/docker-compose.yml build
-	docker save llm-dlp-api:latest llm-dlp-web:latest -o infra/images.tar.gz
+	docker save llm-dlp-api:latest llm-dlp-web:latest postgres:17-alpine quay.io/keycloak/keycloak:26.6.3 python:3.14-slim ghcr.io/berriai/litellm:v1.87.1 quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z -o infra/images.tar.gz
 	@echo "✓ infra/images.tar.gz ready for transfer"
 
 push-cloud: build-cloud  ## Build + upload to cloud server (set CLOUD_HOST env var)
 	@test -n "$(CLOUD_HOST)" || (echo "❌ Set CLOUD_HOST first, e.g. CLOUD_HOST=user@1.2.3.4" && exit 1)
-	scp infra/images.tar.gz $(CLOUD_HOST):~/llm-dlp/infra/
-	scp infra/docker-compose.cloud.yml $(CLOUD_HOST):~/llm-dlp/infra/
-	scp infra/.env.cloud $(CLOUD_HOST):~/llm-dlp/infra/
-	scp -r infra/keycloak/ infra/litellm/ $(CLOUD_HOST):~/llm-dlp/infra/
-	ssh $(CLOUD_HOST) "cd ~/llm-dlp && docker load -i infra/images.tar.gz && docker compose -f infra/docker-compose.cloud.yml --env-file infra/.env.cloud up -d"
+	scp infra/images.tar.gz $(CLOUD_HOST):/home/devuser/projects/LLM_API/infra/
+	scp infra/docker-compose.cloud.yml $(CLOUD_HOST):/home/devuser/projects/LLM_API/infra/
+	scp infra/.env.cloud $(CLOUD_HOST):/home/devuser/projects/LLM_API/infra/
+	scp -r infra/keycloak/ infra/litellm/ $(CLOUD_HOST):/home/devuser/projects/LLM_API/infra/
+	ssh $(CLOUD_HOST) "cd /home/devuser/projects/LLM_API && docker load -i infra/images.tar.gz && docker compose -f infra/docker-compose.cloud.yml --env-file infra/.env.cloud up -d"
 	@echo "✓ Cloud deploy complete"
 
 # --- Testing & quality ---
