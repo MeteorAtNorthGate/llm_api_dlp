@@ -230,6 +230,7 @@ async def chat_completions(
         "messages": litellm_messages,
         "stream": body.stream,
         "temperature": body.temperature,
+        "user": user.keycloak_sub,
     }
     if body.max_tokens:
         litellm_payload["max_tokens"] = body.max_tokens

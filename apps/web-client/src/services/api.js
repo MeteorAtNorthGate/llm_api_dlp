@@ -131,4 +131,20 @@ export const adminApi = {
     api.put('admin/settings', { json: { key, value } }).json(),
 };
 
+// ── Statistics / Usage ────────────────────────────────
+
+export const statsApi = {
+  /** Admin: aggregated token stats for all users */
+  getStats: (startDate, endDate) =>
+    api.get('stats', { searchParams: { start_date: startDate, end_date: endDate } }).json(),
+
+  /** Self: current user's usage with daily breakdown */
+  getMyUsage: (startDate, endDate) =>
+    api.get('stats/me', { searchParams: { start_date: startDate, end_date: endDate } }).json(),
+
+  /** Admin: view a specific user's usage */
+  getUserUsage: (userId, startDate, endDate) =>
+    api.get(`stats/users/${encodeURIComponent(userId)}`, { searchParams: { start_date: startDate, end_date: endDate } }).json(),
+};
+
 export default api;

@@ -27,6 +27,10 @@ export default function Header() {
           {isAdmin && (
             <a href="/ldap" className="btn btn-ghost btn-sm text-primary">LDAP</a>
           )}
+          {isAdmin && (
+            <a href="/statistics" className="btn btn-ghost btn-sm text-primary">Statistics</a>
+          )}
+          <a href="/usage" className="btn btn-ghost btn-sm">Usage</a>
         </div>
       </div>
       <div className="flex-none gap-2">
@@ -50,6 +54,8 @@ export default function Header() {
               {isDeveloper && <li><a href="/admin">API Keys</a></li>}
               {isAdmin && <li><a href="/api-providers">API Providers</a></li>}
               {isAdmin && <li><a href="/ldap">LDAP Configuration</a></li>}
+              {isAdmin && <li><a href="/statistics">Statistics</a></li>}
+              <li><a href="/usage">Usage</a></li>
               <li>
                 <button onClick={logout}>Logout</button>
               </li>

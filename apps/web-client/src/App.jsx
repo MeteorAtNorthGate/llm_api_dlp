@@ -7,6 +7,8 @@ import ChatPage from './pages/Chat/ChatPage';
 import AdminPage from './pages/Admin/AdminPage';
 import SystemAdminPage from './pages/System/SystemAdminPage';
 import LdapAdminPage from './pages/Ldap/LdapAdminPage';
+import StatisticsPage from './pages/Statistics/StatisticsPage';
+import UsagePage from './pages/Usage/UsagePage';
 import NotFoundPage from './pages/NotFoundPage';
 
 export default function App() {
@@ -47,6 +49,30 @@ export default function App() {
           element={
             <ProtectedRoute>
               <LdapAdminPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/statistics"
+          element={
+            <ProtectedRoute>
+              <StatisticsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/usage"
+          element={
+            <ProtectedRoute>
+              <UsagePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/usage/:userId"
+          element={
+            <ProtectedRoute>
+              <UsagePage />
             </ProtectedRoute>
           }
         />
