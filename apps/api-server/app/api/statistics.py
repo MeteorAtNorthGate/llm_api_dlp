@@ -86,19 +86,24 @@ async def _fetch_spend_logs(
                     ),
                 )
 
-            data = resp.json()
+            body = resp.json()
 
-            # LiteLLM may wrap entries in "data" or "results"
-            entries = data.get("data") or data.get("results") or []
-            if not entries:
+            # LiteLLM returns either a bare list or a dict with "data"/"results"
+            if isinstance(body, list):
+                # Bare list — LiteLLM returned all entries at once (no pagination)
+                entries = body
+                all_entries.extend(entries)
+                break  # no more pages to fetch
+            elif isinstance(body, dict):
+                entries = body.get("data") or body.get("results") or []
+                if not entries:
+                    break
+                all_entries.extend(entries)
+                if len(entries) < LITELLM_PAGE_SIZE:
+                    break
+                page += 1
+            else:
                 break
-
-            all_entries.extend(entries)
-
-            # Stop when we received fewer than the page size
-            if len(entries) < LITELLM_PAGE_SIZE:
-                break
-            page += 1
 
     return all_entries
 
