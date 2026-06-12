@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     # LiteLLM
     LITELLM_BASE_URL: str = "http://localhost:4000"
     LITELLM_MASTER_KEY: str = "sk-master-key-change-me"
+    LITELLM_DATABASE_URL: str = "postgresql+asyncpg://llmuser:llmpass@localhost:5432/litellm"
     LITELLM_PUBLIC_URL: str = "http://localhost:4000"  # 对外暴露给用户的 LiteLLM 访问地址
 
     # Default model (seeded on first startup via LiteLLM admin API)

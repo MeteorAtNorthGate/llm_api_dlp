@@ -18,15 +18,25 @@ async def _fetch_jwks() -> dict:
         return _jwks
 
     import httpx
+    from urllib.parse import urlparse
 
     async with httpx.AsyncClient() as client:
-        # Fetch OIDC config to get jwks_uri
+        # Fetch OIDC config to get jwks_uri path
         resp = await client.get(settings.keycloak_openid_config_url)
         resp.raise_for_status()
         oidc_config = resp.json()
 
+        # Rewrite jwks_uri hostname to match KEYCLOAK_URL so it works inside
+        # Docker (where Keycloak may report itself as "localhost" but the
+        # api-server container needs to reach it via the "keycloak" hostname).
+        jwks_uri = oidc_config["jwks_uri"]
+        parsed = urlparse(jwks_uri)
+        base = urlparse(settings.KEYCLOAK_URL)
+        if parsed.hostname != base.hostname:
+            jwks_uri = parsed._replace(netloc=f"{base.hostname}:{base.port}").geturl()
+
         # Fetch JWKS
-        jwks_resp = await client.get(oidc_config["jwks_uri"])
+        jwks_resp = await client.get(jwks_uri)
         jwks_resp.raise_for_status()
         _jwks = jwks_resp.json()
 

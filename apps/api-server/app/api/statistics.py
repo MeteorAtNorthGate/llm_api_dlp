@@ -1,17 +1,19 @@
 """Statistics API endpoints — token consumption analytics.
 
-Queries LiteLLM's /user/daily/activity endpoint which returns per-day token
-metrics with per-model and per-API-key breakdowns (prompt_tokens,
-completion_tokens, cache_read_input_tokens).  This replaces the older
-/global/spend/logs endpoint which only returned date + spend aggregates.
+Queries LiteLLM's PostgreSQL database directly for daily-aggregated token
+metrics from ``LiteLLM_DailyEndUserSpend``.  This replaces the older approach
+of calling LiteLLM's ``/user/daily/activity`` HTTP API, which could not filter
+by ``end_user`` (the ``"user"`` field in chat-completion request bodies).
 
 Architecture
 ------------
-- Admin page (/stats): hybrid — one global call for non-system-key breakdown
-  (maps to users via ApiKey table) + concurrent per-user calls for chat usage
-  (attributed via the ``user`` field in chat requests).
-- Per-user page (/stats/me, /stats/users/{user_id}): direct call filtered by
-  ``user_id`` (web UI chat) plus per-API-key calls (external developer usage).
+- Admin page (/stats): one SQL query for per-api-key totals (maps to local
+  users via the ``ApiKey`` table) + concurrent per-end-user queries for chat
+  usage (attributed via the ``user`` field in chat requests, stored in
+  ``end_user_id``).
+- Per-user page (/stats/me, /stats/users/{user_id}): SQL queries filtered by
+  ``end_user_id`` (web UI chat) plus per-``api_key`` queries (external
+  developer usage).
 """
 
 import asyncio
@@ -20,16 +22,15 @@ from collections import defaultdict
 from datetime import date, timedelta
 from typing import Any
 
-import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.security import get_current_user, is_admin
 from app.db.models.api_key import ApiKey
 from app.db.models.user import User
-from app.db.session import get_session
+from app.db.session import get_session, get_litellm_session
 from app.schemas.statistics import (
     ApiKeyStats,
     DailyUsage,
@@ -41,8 +42,6 @@ from app.schemas.statistics import (
 router = APIRouter()
 
 # ── Helpers ──────────────────────────────────────────────────────────────
-
-LITELLM_PAGE_SIZE = 500
 
 # LiteLLM internal / system keys that should never appear in user statistics.
 _SYSTEM_KEY_IDS = frozenset({
@@ -59,70 +58,8 @@ def _default_end_date() -> date:
     return date.today()
 
 
-async def _fetch_user_activity(
-    start_date: date,
-    end_date: date,
-    user_id: str | None = None,
-    api_key: str | None = None,
-    page_size: int = LITELLM_PAGE_SIZE,
-) -> list[dict[str, Any]]:
-    """Fetch ALL daily-activity entries from LiteLLM /user/daily/activity.
-
-    Handles pagination by following ``metadata.has_more`` until exhausted.
-    Returns the flat list of ``results`` entries across all pages.
-    """
-    all_results: list[dict[str, Any]] = []
-    page = 1
-
-    params: dict[str, Any] = {
-        "start_date": start_date.isoformat(),
-        "end_date": end_date.isoformat(),
-        "page_size": page_size,
-    }
-    if user_id:
-        params["user_id"] = user_id
-    if api_key:
-        params["api_key"] = api_key
-
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        while True:
-            params["page"] = page
-            resp = await client.get(
-                f"{settings.LITELLM_BASE_URL}/user/daily/activity",
-                params=params,
-                headers={
-                    "Authorization": f"Bearer {settings.LITELLM_MASTER_KEY}",
-                },
-            )
-            if resp.status_code != 200:
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail=(
-                        f"LiteLLM /user/daily/activity query failed "
-                        f"(status {resp.status_code}): {resp.text[:500]}"
-                    ),
-                )
-
-            body = resp.json()
-            if not isinstance(body, dict):
-                break
-
-            results = body.get("results") or []
-            if not results:
-                break
-
-            all_results.extend(results)
-
-            meta = body.get("metadata") or {}
-            if not meta.get("has_more", False):
-                break
-            page += 1
-
-    return all_results
-
-
 def _extract_tokens_from_metrics(metrics: dict[str, Any]) -> tuple[int, int, int]:
-    """Return (cache_miss, cache_hit, output) from a LiteLLM metrics dict.
+    """Return (cache_miss, cache_hit, output) from a metrics dict.
 
     ``prompt_tokens`` is the total input; ``cache_read_input_tokens`` is the
     cached portion.  Cache-miss = prompt - cache_hit (≥ 0).
@@ -146,6 +83,107 @@ def _safe_percent(numerator: int, denominator: int) -> float:
     return round(numerator / denominator * 100, 1)
 
 
+# ── SQL query helpers ────────────────────────────────────────────────────
+
+async def _query_end_user_activity(
+    session: AsyncSession,
+    start_date: date,
+    end_date: date,
+    *,
+    end_user_id: str | None = None,
+    api_key: str | None = None,
+) -> list[dict[str, Any]]:
+    """Query ``LiteLLM_DailyEndUserSpend`` for daily-aggregated token metrics.
+
+    Returns a list of ``{date, metrics: {prompt_tokens, completion_tokens,
+    cache_read_input_tokens}}`` entries, compatible with the downstream
+    aggregation logic.
+    """
+    conditions = ["date BETWEEN :start_date AND :end_date"]
+    params: dict[str, Any] = {
+        "start_date": start_date.isoformat(),
+        "end_date": end_date.isoformat(),
+    }
+
+    if end_user_id:
+        conditions.append("end_user_id = :end_user_id")
+        params["end_user_id"] = end_user_id
+    if api_key:
+        conditions.append("api_key = :api_key")
+        params["api_key"] = api_key
+
+    where_clause = " AND ".join(conditions)
+
+    query = text(f"""
+        SELECT date,
+               SUM(prompt_tokens)               AS prompt_tokens,
+               SUM(completion_tokens)           AS completion_tokens,
+               SUM(cache_read_input_tokens)     AS cache_read_input_tokens
+        FROM "LiteLLM_DailyEndUserSpend"
+        WHERE {where_clause}
+        GROUP BY date
+        ORDER BY date
+    """)
+
+    result = await session.execute(query, params)
+    rows = result.fetchall()
+
+    return [
+        {
+            "date": row.date,
+            "metrics": {
+                "prompt_tokens": row.prompt_tokens or 0,
+                "completion_tokens": row.completion_tokens or 0,
+                "cache_read_input_tokens": row.cache_read_input_tokens or 0,
+            },
+        }
+        for row in rows
+    ]
+
+
+async def _query_api_key_breakdown(
+    session: AsyncSession,
+    start_date: date,
+    end_date: date,
+) -> dict[str, dict[str, int]]:
+    """Query ``LiteLLM_DailyEndUserSpend`` for per-api-key token totals.
+
+    Returns ``{api_key: {cache_miss, cache_hit, output}}``, excluding system
+    keys.  The ``api_key`` values are token hashes that match
+    ``ApiKey.litellm_key_id``.
+    """
+    query = text("""
+        SELECT api_key,
+               SUM(prompt_tokens)               AS prompt_tokens,
+               SUM(completion_tokens)           AS completion_tokens,
+               SUM(cache_read_input_tokens)     AS cache_read_input_tokens
+        FROM "LiteLLM_DailyEndUserSpend"
+        WHERE date BETWEEN :start_date AND :end_date
+          AND api_key NOT IN ('litellm_proxy_master_key', 'litellm-internal-health-check')
+        GROUP BY api_key
+    """)
+
+    result = await session.execute(query, {
+        "start_date": start_date.isoformat(),
+        "end_date": end_date.isoformat(),
+    })
+    rows = result.fetchall()
+
+    key_tokens: dict[str, dict[str, int]] = {}
+    for row in rows:
+        prompt = row.prompt_tokens or 0
+        cache_hit = row.cache_read_input_tokens or 0
+        completion = row.completion_tokens or 0
+        cache_miss = max(prompt - cache_hit, 0)
+        key_tokens[row.api_key] = {
+            "cache_miss": cache_miss,
+            "cache_hit": cache_hit,
+            "output": completion,
+        }
+
+    return key_tokens
+
+
 # ── Endpoints ────────────────────────────────────────────────────────────
 
 
@@ -155,12 +193,13 @@ async def get_statistics(
     end_date: date = Query(default_factory=_default_end_date),
     user_claims: dict = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
+    litellm_session: AsyncSession = Depends(get_litellm_session),
 ):
     """Admin: aggregated token consumption for all users and API keys.
 
     Strategy (hybrid):
-    1. One global /user/daily/activity call → non-system-key breakdown.
-    2. Concurrent per-user calls → chat usage attributed via ``user`` field.
+    1. One SQL query → per-API-key totals from ``LiteLLM_DailyEndUserSpend``.
+    2. Concurrent per-end-user queries → chat usage.
     3. Merge: per-key totals from (1) + per-user totals from (2).
     """
     if not is_admin(user_claims):
@@ -178,53 +217,31 @@ async def get_statistics(
     # ── Load local data ──────────────────────────────────────────────────
     users_result = await session.execute(select(User))
     all_users: list[User] = users_result.scalars().all()
-    # Build lookup: user.id → User
     id_to_user: dict[uuid.UUID, User] = {u.id: u for u in all_users}
 
     api_keys_result = await session.execute(select(ApiKey))
     all_api_keys: list[ApiKey] = api_keys_result.scalars().all()
-    # LiteLLM key-id → local ApiKey
-    litellm_id_to_apikey: dict[str, ApiKey] = {
-        ak.litellm_key_id: ak for ak in all_api_keys
-    }
 
-    # ── 1. Global call → non-system key attribution ─────────────────────
-    global_entries = await _fetch_user_activity(start_date, end_date)
+    # ── 1. SQL query → per-API-key attribution ───────────────────────────
+    key_tokens = await _query_api_key_breakdown(litellm_session, start_date, end_date)
 
-    # key_id → {cache_miss, cache_hit, output}
-    key_tokens: dict[str, dict[str, int]] = defaultdict(
-        lambda: {"cache_miss": 0, "cache_hit": 0, "output": 0}
-    )
-
-    for day_entry in global_entries:
-        models_data = (day_entry.get("breakdown") or {}).get("models") or {}
-        for _model_name, model_data in models_data.items():
-            akb = model_data.get("api_key_breakdown") or {}
-            for key_id, key_data in akb.items():
-                if key_id in _SYSTEM_KEY_IDS:
-                    continue
-                km = key_data.get("metrics") or {}
-                cm, ch, out = _extract_tokens_from_metrics(km)
-                tk = key_tokens[key_id]
-                tk["cache_miss"] += cm
-                tk["cache_hit"] += ch
-                tk["output"] += out
-
-    # ── 2. Per-user calls (concurrent) → chat usage ─────────────────────
+    # ── 2. Per-user queries (concurrent) → chat usage ────────────────────
     async def _fetch_one_user(user: User) -> tuple[User, list[dict[str, Any]]]:
-        """Fetch daily activity for a single user (by keycloak_sub)."""
-        entries = await _fetch_user_activity(
-            start_date, end_date, user_id=user.keycloak_sub
+        """Fetch daily activity for a single user by end_user_id (keycloak_sub)."""
+        entries = await _query_end_user_activity(
+            litellm_session,
+            start_date,
+            end_date,
+            end_user_id=user.keycloak_sub,
         )
         return user, entries
 
-    # Fire all per-user fetches concurrently
     user_tasks = [_fetch_one_user(u) for u in all_users]
     per_user_results: list[tuple[User, list[dict[str, Any]]]] = (
         await asyncio.gather(*user_tasks)
     )
 
-    # user_id → {cache_miss, cache_hit, output}  (chat usage from per-user call)
+    # user_id → {cache_miss, cache_hit, output}  (chat usage)
     user_chat_tokens: dict[uuid.UUID, dict[str, int]] = {}
     for user, entries in per_user_results:
         totals = {"cache_miss": 0, "cache_hit": 0, "output": 0}
@@ -236,16 +253,16 @@ async def get_statistics(
             totals["output"] += out
         user_chat_tokens[user.id] = totals
 
-    # ── 3. Merge: build UserStats list ──────────────────────────────────
+    # ── 3. Merge: build UserStats list ───────────────────────────────────
     user_stats_list: list[UserStats] = []
     grand_total = 0
 
     for user in all_users:
-        # Chat (direct) usage from per-user call
+        # Chat (direct) usage from per-user end_user_id query
         chat = user_chat_tokens.get(user.id, {"cache_miss": 0, "cache_hit": 0, "output": 0})
         chat_total = chat["cache_miss"] + chat["cache_hit"] + chat["output"]
 
-        # API keys owned by this user (from global api_key_breakdown)
+        # API keys owned by this user (from api_key breakdown)
         api_key_stats_list: list[ApiKeyStats] = []
         keys_total = 0
 
@@ -309,6 +326,7 @@ async def get_my_usage(
     end_date: date = Query(default_factory=_default_end_date),
     user_claims: dict = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
+    litellm_session: AsyncSession = Depends(get_litellm_session),
 ):
     """Current user's token usage with daily breakdown for chart."""
     if start_date > end_date:
@@ -318,8 +336,10 @@ async def get_my_usage(
         )
 
     user = await _get_or_create_user(session, user_claims)
-    return await _build_user_usage(session, target_user=user,
-                                   start_date=start_date, end_date=end_date)
+    return await _build_user_usage(
+        session, litellm_session, target_user=user,
+        start_date=start_date, end_date=end_date,
+    )
 
 
 @router.get("/users/{user_id}", response_model=UserUsageResponse)
@@ -329,6 +349,7 @@ async def get_user_usage(
     end_date: date = Query(default_factory=_default_end_date),
     user_claims: dict = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
+    litellm_session: AsyncSession = Depends(get_litellm_session),
 ):
     """Admin: view any user's usage. Non-admin: can only view self."""
     if start_date > end_date:
@@ -351,8 +372,10 @@ async def get_user_usage(
             detail="You can only view your own usage",
         )
 
-    return await _build_user_usage(session, target_user=target_user,
-                                   start_date=start_date, end_date=end_date)
+    return await _build_user_usage(
+        session, litellm_session, target_user=target_user,
+        start_date=start_date, end_date=end_date,
+    )
 
 
 # ── Internal helpers ─────────────────────────────────────────────────────
@@ -383,21 +406,26 @@ async def _get_or_create_user(session: AsyncSession, user_claims: dict) -> User:
 
 async def _build_user_usage(
     session: AsyncSession,
+    litellm_session: AsyncSession,
     target_user: User,
     start_date: date,
     end_date: date,
 ) -> UserUsageResponse:
     """Build a UserUsageResponse — daily breakdown + summary for one user.
 
-    1. /user/daily/activity?user_id=<keycloak_sub>    → direct chat usage
-    2. /user/daily/activity?api_key=<litellm_key_id>   → external key usage
-       (one call per key owned by this user)
+    1. ``LiteLLM_DailyEndUserSpend`` WHERE ``end_user_id = <keycloak_sub>``
+       → direct chat usage
+    2. ``LiteLLM_DailyEndUserSpend`` WHERE ``api_key = <litellm_key_id>``
+       → external key usage (one query per key owned by this user)
     3. Merge daily maps from both sources.
     """
 
-    # 1. Direct usage (web UI chat — attributed via ``user`` field)
-    user_entries = await _fetch_user_activity(
-        start_date, end_date, user_id=target_user.keycloak_sub
+    # 1. Direct usage (web UI chat — attributed via ``end_user_id``)
+    user_entries = await _query_end_user_activity(
+        litellm_session,
+        start_date,
+        end_date,
+        end_user_id=target_user.keycloak_sub,
     )
 
     # 2. API key usage (external developer calls)
@@ -406,8 +434,11 @@ async def _build_user_usage(
     )
     all_entries = list(user_entries)  # shallow copy
     for ak in api_keys_result.scalars().all():
-        key_entries = await _fetch_user_activity(
-            start_date, end_date, api_key=ak.litellm_key_id
+        key_entries = await _query_end_user_activity(
+            litellm_session,
+            start_date,
+            end_date,
+            api_key=ak.litellm_key_id,
         )
         all_entries.extend(key_entries)
 
