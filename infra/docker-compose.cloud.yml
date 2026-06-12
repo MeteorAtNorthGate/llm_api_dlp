@@ -54,6 +54,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - default
+      - nginx-proxy-manager_default
 
   keycloak-setup:
     image: python:3.14-slim

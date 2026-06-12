@@ -78,8 +78,18 @@ ssh $SSH_OPTS $REMOTE_USER@$REMOTE_HOST << EOF
         echo "--- 已创建第三方镜像标记: $EXTERNAL_SENTINEL ---"
     fi
 
-    echo "--- 正在重启全部容器 ---"
+    echo "--- 停止全部旧容器 ---"
     docker compose -f $COMPOSE_CLOUD --env-file infra/.env.cloud down
+
+    echo "--- 启动 postgres 并等待就绪 ---"
+    docker compose -f $COMPOSE_CLOUD --env-file infra/.env.cloud up -d postgres
+    until docker exec llm-dlp-postgres pg_isready -U llmuser; do sleep 1; done
+
+    echo "--- 创建 keycloak 和 litellm 数据库 ---"
+    docker exec llm-dlp-postgres psql -U llmuser -d postgres -c "CREATE DATABASE keycloak;" 2>/dev/null || echo "  keycloak DB already exists"
+    docker exec llm-dlp-postgres psql -U llmuser -d postgres -c "CREATE DATABASE litellm;" 2>/dev/null || echo "  litellm DB already exists"
+
+    echo "--- 启动全部容器 ---"
     docker compose -f $COMPOSE_CLOUD --env-file infra/.env.cloud up -d
 
     echo "--- 清理服务器临时文件和敏感配置 ---"
