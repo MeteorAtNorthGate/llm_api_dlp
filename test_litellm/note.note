@@ -1,0 +1,16 @@
+# 使用request_with_username.sh提交一个请求，然后
+# 直接进postgre查表
+    docker exec -it llm-dlp-postgres psql -U llmuser -d llm_dlp
+    llm_dlp=# \c litellm
+    # 返回：
+    """
+    litellm=# SELECT end_user, model, total_tokens, "startTime"
+    litellm-# FROM "LiteLLM_SpendLogs" 
+    litellm-# WHERE end_user = 'zhangsan'
+    litellm-# ORDER BY "startTime" DESC;
+    end_user |           model            | total_tokens |        startTime        
+    ----------+----------------------------+--------------+-------------------------
+    zhangsan | deepseek/deepseek-v4-flash |          176 | 2026-06-12 03:10:04.866
+    (1 row)
+    """
+# 是能跑通的。前端可以照着这个思路来
