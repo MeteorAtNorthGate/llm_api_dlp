@@ -9,6 +9,9 @@ TAR_NAME="llm_dlp_web.tar.gz"
 COMPOSE_LOCAL="infra/docker-compose.yml"
 COMPOSE_CLOUD="infra/docker-compose.cloud.yml"
 
+# SSH 连接复用 — 首次连接要求密码，后续复用，避免多次输入
+SSH_OPTS="-o ControlMaster=auto -o ControlPath=/tmp/ssh-deploy-$$-%r@%h:%p -o ControlPersist=120"
+
 # 设置错误即停止
 set -e
 
@@ -25,10 +28,11 @@ echo "💾 [4/6] 导出并压缩镜像 (使用 gzip 提速)..."
 docker save $IMAGES | gzip > $TAR_NAME
 
 echo "🚚 [5/6] 传输文件到服务器 $REMOTE_HOST..."
-scp $TAR_NAME $COMPOSE_CLOUD $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/
+ssh $SSH_OPTS $REMOTE_USER@$REMOTE_HOST "mkdir -p $REMOTE_DIR/infra"
+scp $SSH_OPTS $TAR_NAME $COMPOSE_CLOUD $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/infra/
 
 echo "🚀 [6/6] 在服务器上部署 Web Client 更新..."
-ssh $REMOTE_USER@$REMOTE_HOST << EOF
+ssh $SSH_OPTS $REMOTE_USER@$REMOTE_HOST << EOF
     cd $REMOTE_DIR
     echo "--- 正在加载前端镜像 ---"
     gunzip -c $TAR_NAME | docker load
@@ -42,3 +46,6 @@ ssh $REMOTE_USER@$REMOTE_HOST << EOF
 EOF
 
 echo "✅ Web Client 部署完成！"
+
+# 关闭 SSH 复用连接
+ssh $SSH_OPTS -O exit $REMOTE_USER@$REMOTE_HOST 2>/dev/null || true

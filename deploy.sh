@@ -11,6 +11,9 @@ EXTERNAL_SENTINEL=".external-images-loaded"
 COMPOSE_LOCAL="infra/docker-compose.yml"
 COMPOSE_CLOUD="infra/docker-compose.cloud.yml"
 
+# SSH 连接复用 — 首次连接要求密码，后续复用，避免多次输入
+SSH_OPTS="-o ControlMaster=auto -o ControlPath=/tmp/ssh-deploy-$$-%r@%h:%p -o ControlPersist=120"
+
 # 设置错误即停止
 set -e
 
@@ -31,7 +34,7 @@ docker builder prune -f
 # --- 判断云端是否需要第三方镜像 ---
 
 echo "🔍 [4/6] 检查云端第三方镜像状态..."
-if ssh $REMOTE_USER@$REMOTE_HOST "test -f $REMOTE_DIR/$EXTERNAL_SENTINEL" 2>/dev/null; then
+if ssh $SSH_OPTS $REMOTE_USER@$REMOTE_HOST "test -f $REMOTE_DIR/$EXTERNAL_SENTINEL" 2>/dev/null; then
     echo "  ✅ 云端已有第三方镜像（$EXTERNAL_SENTINEL 存在），跳过第三方镜像打包"
     IMAGES="$SELF_BUILT_IMAGES"
     LOAD_EXTERNAL=false
@@ -46,18 +49,18 @@ echo "  打包: $IMAGES"
 docker save $IMAGES | gzip > $TAR_NAME
 
 echo "🚚 [6/6] 传输文件到服务器 $REMOTE_HOST..."
-scp $TAR_NAME $COMPOSE_CLOUD $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/
+scp $SSH_OPTS $TAR_NAME $COMPOSE_CLOUD $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/infra/
 
 echo "📁       上传配置文件..."
-ssh $REMOTE_USER@$REMOTE_HOST "mkdir -p $REMOTE_DIR/infra/keycloak $REMOTE_DIR/infra/litellm"
-scp infra/.env.cloud $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/infra/ || echo "⚠️  .env.cloud 不存在，请先创建"
-scp -r infra/keycloak/llm-dlp-realm.json $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/infra/keycloak/ || true
-scp -r infra/litellm/config.yaml $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/infra/litellm/ || true
+ssh $SSH_OPTS $REMOTE_USER@$REMOTE_HOST "mkdir -p $REMOTE_DIR/infra/keycloak $REMOTE_DIR/infra/litellm"
+scp $SSH_OPTS infra/.env.cloud $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/infra/ || echo "⚠️  .env.cloud 不存在，请先创建"
+scp $SSH_OPTS -r infra/keycloak/llm-dlp-realm.json $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/infra/keycloak/ || true
+scp $SSH_OPTS -r infra/litellm/config.yaml $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/infra/litellm/ || true
 
 # --- 云端部署 ---
 
 echo "🚀 在服务器上部署更新..."
-ssh $REMOTE_USER@$REMOTE_HOST << EOF
+ssh $SSH_OPTS $REMOTE_USER@$REMOTE_HOST << EOF
     set -e
     cd $REMOTE_DIR
 
@@ -81,6 +84,9 @@ EOF
 
 echo ""
 echo "✅ 部署全部完成！"
+
+# 关闭 SSH 复用连接
+ssh $SSH_OPTS -O exit $REMOTE_USER@$REMOTE_HOST 2>/dev/null || true
 
 # 可选：清理本地生成的压缩包
 # rm $TAR_NAME
