@@ -127,6 +127,8 @@ services:
       KEYCLOAK_REALM: ${KEYCLOAK_REALM:-llm-dlp}
       KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-llm-dlp-web}
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
       LITELLM_BASE_URL: http://litellm:4000
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-master-key-change-me}
       LITELLM_DATABASE_URL: postgresql+asyncpg://llmuser:${POSTGRES_PASSWORD:-llmpass}@postgres:5432/litellm
