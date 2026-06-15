@@ -4,8 +4,13 @@
 model_list: []
 
 general_settings:
-  master_key: sk-master-key-change-me
-  database_url: postgresql://llmuser:llmpass@postgres:5432/litellm
+  # 以下两项由环境变量注入（docker-compose 负责设置），
+  # 不要在 YAML 中硬编码真实密码 —— config.yaml 仅作为模板参考。
+  #   本地开发默认值:   DATABASE_URL=postgresql://llmuser:llmpass@postgres:5432/litellm
+  #                     LITELLM_MASTER_KEY=sk-master-key-change-me
+  #   云端部署覆盖方式:  cp .env.cloud.example .env.cloud → 修改强密码 → deploy
+  master_key: os.environ/LITELLM_MASTER_KEY
+  database_url: os.environ/DATABASE_URL
 
 litellm_settings:
   # callbacks are disabled until DLP plugin is mounted into container
