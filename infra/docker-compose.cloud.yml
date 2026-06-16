@@ -98,6 +98,9 @@ services:
       SERVER_ROOT_PATH: ""
     volumes:
       - ./litellm/config.yaml:/app/config.yaml:ro
+    networks:
+      - default
+      - nginx-proxy-manager_default
     depends_on:
       postgres:
         condition: service_healthy
@@ -136,6 +139,7 @@ services:
       LITELLM_BASE_URL: http://litellm:4000
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-master-key-change-me}
       LITELLM_DATABASE_URL: postgresql+asyncpg://llmuser:${POSTGRES_PASSWORD:-llmpass}@postgres:5432/litellm
+      LITELLM_PUBLIC_URL: ${LITELLM_PUBLIC_URL:-http://localhost:4000}
       APP_SECRET_KEY: ${APP_SECRET_KEY}
       APP_LOG_LEVEL: ${APP_LOG_LEVEL:-INFO}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
