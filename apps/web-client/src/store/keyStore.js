@@ -47,6 +47,15 @@ export const useKeyStore = create((set, get) => ({
     }
   },
 
+  deleteKey: async (id) => {
+    try {
+      await keysApi.delete(id);
+      await get().loadKeys();
+    } catch (err) {
+      console.error('Failed to delete key', err);
+    }
+  },
+
   closeNewKeyModal: () => {
     set({ showNewKeyModal: false, newKeyData: null });
   },

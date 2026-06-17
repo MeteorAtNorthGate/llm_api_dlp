@@ -71,6 +71,8 @@ export const keysApi = {
     api.post('keys/generate', { json: payload }).json(),
 
   revoke: (id) => api.delete(`keys/${id}`),
+
+  delete: (id) => api.delete(`keys/${id}/permanent`),
 };
 
 // ── Files ─────────────────────────────────────────────

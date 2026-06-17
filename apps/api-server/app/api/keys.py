@@ -262,3 +262,50 @@ async def revoke_key(
 
     db_key.is_active = False
     await session.commit()
+
+
+@router.delete("/{key_id}/permanent", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_key(
+    key_id: str,
+    user_claims: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Permanently delete an API key — remove from LiteLLM and hard-delete from Postgres."""
+    if not _is_developer(user_claims):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only developers can delete API keys",
+        )
+
+    user = await _get_or_create_user(session, user_claims)
+
+    result = await session.execute(
+        select(ApiKey).where(
+            ApiKey.id == uuid.UUID(key_id),
+            ApiKey.user_id == user.id,
+        )
+    )
+    db_key = result.scalar_one_or_none()
+    if db_key is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="API key not found",
+        )
+
+    # Delete from LiteLLM first (best effort)
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            await client.post(
+                f"{settings.LITELLM_BASE_URL}/key/delete",
+                json={"keys": [db_key.litellm_key_id]},
+                headers={
+                    "Authorization": f"Bearer {settings.LITELLM_MASTER_KEY}",
+                    "Content-Type": "application/json",
+                },
+            )
+    except Exception:
+        pass  # Best effort — proceed with local hard-delete regardless
+
+    # Hard-delete from local database
+    await session.delete(db_key)
+    await session.commit()

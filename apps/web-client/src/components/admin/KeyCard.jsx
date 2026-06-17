@@ -2,7 +2,7 @@
 
 import { formatDate } from '../../utils/format';
 
-export default function KeyCard({ keyData, onRevoke }) {
+export default function KeyCard({ keyData, onRevoke, onDelete }) {
   const isExpired = keyData.expires_at && new Date(keyData.expires_at) < new Date();
   const isInactive = !keyData.is_active || isExpired;
 
@@ -52,16 +52,22 @@ export default function KeyCard({ keyData, onRevoke }) {
           )}
         </div>
 
-        {!isInactive && (
-          <div className="card-actions justify-end mt-3">
+        <div className="card-actions justify-end mt-3 gap-2">
+          {!isInactive && (
             <button
               className="btn btn-error btn-xs btn-outline"
               onClick={() => onRevoke(keyData.id)}
             >
               Revoke
             </button>
-          </div>
-        )}
+          )}
+          <button
+            className="btn btn-ghost btn-xs btn-outline text-base-content/50"
+            onClick={() => onDelete(keyData.id)}
+          >
+            Delete
+          </button>
+        </div>
       </div>
     </div>
   );

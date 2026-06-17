@@ -19,6 +19,7 @@ export default function AdminPage() {
     loadKeys,
     generateKey,
     revokeKey,
+    deleteKey,
     closeNewKeyModal,
   } = useKeyStore();
 
@@ -125,6 +126,7 @@ export default function AdminPage() {
                   key={key.id}
                   keyData={key}
                   onRevoke={revokeKey}
+                  onDelete={deleteKey}
                 />
               ))}
             </div>
