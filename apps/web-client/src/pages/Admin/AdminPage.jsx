@@ -34,6 +34,8 @@ export default function AdminPage() {
   const [genError, setGenError] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState(null);
+  const pendingKey = pendingDeleteId ? keys.find((k) => k.id === pendingDeleteId) : null;
 
   const loadAvailableModels = useCallback(async () => {
     try {
@@ -86,6 +88,25 @@ export default function AdminPage() {
     setTimeout(() => setCopied(false), 3000);
   };
 
+  const handleDeleteRequest = (keyId) => {
+    const key = keys.find((k) => k.id === keyId);
+    // If key is already inactive (revoked/expired), delete immediately without confirmation
+    const isExpired = key?.expires_at && new Date(key.expires_at) < new Date();
+    if (!key?.is_active || isExpired) {
+      deleteKey(keyId);
+      return;
+    }
+    // Active key — ask for confirmation first
+    setPendingDeleteId(keyId);
+  };
+
+  const confirmDelete = () => {
+    if (pendingDeleteId) {
+      deleteKey(pendingDeleteId);
+      setPendingDeleteId(null);
+    }
+  };
+
   return (
     <Layout showSidebar={false}>
       <div className="p-6 max-w-4xl mx-auto space-y-6">
@@ -126,7 +147,7 @@ export default function AdminPage() {
                   key={key.id}
                   keyData={key}
                   onRevoke={revokeKey}
-                  onDelete={deleteKey}
+                  onDelete={handleDeleteRequest}
                 />
               ))}
             </div>
@@ -403,6 +424,44 @@ client = anthropic.Anthropic(
             </div>
           </Modal>
         )}
+
+        {/* Delete Confirmation Modal (only for active keys) */}
+        <Modal
+          open={!!pendingDeleteId}
+          onClose={() => setPendingDeleteId(null)}
+          title="Confirm Delete"
+        >
+          <div className="space-y-4">
+            <div className="alert alert-warning">
+              <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              <div>
+                <p className="font-bold">
+                  Delete active key sk-...{pendingKey?.key_suffix}?
+                </p>
+                <p className="text-sm">
+                  This key is currently <strong>active</strong>. Deleting it will permanently
+                  remove it from both LiteLLM and the local database. The key will stop working
+                  immediately for anyone using it.
+                </p>
+                {pendingKey?.key_alias && (
+                  <p className="text-sm mt-1">
+                    Alias: <strong>{pendingKey.key_alias}</strong>
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="modal-action">
+              <button className="btn btn-ghost" onClick={() => setPendingDeleteId(null)}>
+                Cancel
+              </button>
+              <button className="btn btn-error" onClick={confirmDelete}>
+                Yes, Delete Permanently
+              </button>
+            </div>
+          </div>
+        </Modal>
       </div>
     </Layout>
   );
