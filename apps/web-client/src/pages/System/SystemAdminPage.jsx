@@ -38,6 +38,7 @@ const EMPTY_FORM = {
   api_base: '',
   rpm: 500,
   tpm: 100000,
+  max_input_tokens_k: '',
 };
 
 export default function SystemAdminPage() {
@@ -145,6 +146,9 @@ export default function SystemAdminPage() {
         api_base: addForm.api_base || null,
         rpm: addForm.rpm || null,
         tpm: addForm.tpm || null,
+        max_input_tokens: addForm.max_input_tokens_k
+          ? parseInt(addForm.max_input_tokens_k) * 1000
+          : null,
       });
       setShowAdd(false);
       setAddForm({ ...EMPTY_FORM });
@@ -166,6 +170,9 @@ export default function SystemAdminPage() {
       api_base: model.api_base || '',
       rpm: model.rpm,
       tpm: model.tpm,
+      max_input_tokens_k: model.max_input_tokens
+        ? String(Math.round(model.max_input_tokens / 1000))
+        : '',
     });
     setEditError(null);
     setShowKey(false);
@@ -191,6 +198,13 @@ export default function SystemAdminPage() {
       }
       if (editForm.tpm !== editModel.tpm) {
         payload.tpm = editForm.tpm;
+      }
+      // max_input_tokens: convert from K to tokens; only include if changed
+      const newMaxInputTokens = editForm.max_input_tokens_k
+        ? parseInt(editForm.max_input_tokens_k) * 1000
+        : null;
+      if (newMaxInputTokens !== (editModel.max_input_tokens || null)) {
+        payload.max_input_tokens = newMaxInputTokens;
       }
 
       await adminApi.updateModel(editModel.id, payload);
@@ -342,6 +356,9 @@ export default function SystemAdminPage() {
                     {m.api_base && (
                       <div><span className="font-medium">Base URL:</span> {m.api_base}</div>
                     )}
+                    {m.max_input_tokens && (
+                      <div><span className="font-medium">Context:</span> {(m.max_input_tokens / 1000).toLocaleString()}K tokens</div>
+                    )}
                     {m.rpm && <div><span className="font-medium">RPM:</span> {m.rpm}</div>}
                     {m.tpm && <div><span className="font-medium">TPM:</span> {m.tpm.toLocaleString()}</div>}
                     <div><span className="font-medium">ID:</span> <code className="text-xs">{m.id?.slice(0, 12)}...</code></div>
@@ -465,6 +482,24 @@ export default function SystemAdminPage() {
               </div>
             </div>
 
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text font-medium">Context Window (K tokens)</span>
+                <span className="label-text-alt text-base-content/50">Optional — model default if empty</span>
+              </label>
+              <input
+                type="number" className="input input-bordered"
+                placeholder="e.g., 1000 for 1M tokens"
+                value={addForm.max_input_tokens_k}
+                onChange={(e) => setAddForm((f) => ({ ...f, max_input_tokens_k: e.target.value }))}
+              />
+              <label className="label">
+                <span className="label-text-alt text-base-content/50">
+                  LiteLLM defaults to 128K if not set. For DeepSeek 1M context, enter 1000.
+                </span>
+              </label>
+            </div>
+
             {addError && <div className="alert alert-error text-sm"><span>{addError}</span></div>}
 
             <div className="modal-action">
@@ -543,6 +578,24 @@ export default function SystemAdminPage() {
                     onChange={(e) => setEditForm((f) => ({ ...f, tpm: e.target.value ? parseInt(e.target.value) : null }))}
                   />
                 </div>
+              </div>
+
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text font-medium">Context Window (K tokens)</span>
+                  <span className="label-text-alt text-base-content/50">Leave empty to keep current</span>
+                </label>
+                <input
+                  type="number" className="input input-bordered"
+                  placeholder="e.g., 1000 for 1M tokens"
+                  value={editForm.max_input_tokens_k}
+                  onChange={(e) => setEditForm((f) => ({ ...f, max_input_tokens_k: e.target.value }))}
+                />
+                <label className="label">
+                  <span className="label-text-alt text-base-content/50">
+                    LiteLLM defaults to 128K if not set. For DeepSeek 1M context, enter 1000.
+                  </span>
+                </label>
               </div>
 
               {editError && <div className="alert alert-error text-sm"><span>{editError}</span></div>}

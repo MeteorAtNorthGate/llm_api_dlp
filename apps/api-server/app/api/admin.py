@@ -80,6 +80,7 @@ class ModelAddRequest(BaseModel):
     api_base: str | None = Field(default=None, description="Custom API base URL")
     rpm: int | None = Field(default=None, description="Requests per minute limit")
     tpm: int | None = Field(default=None, description="Tokens per minute limit")
+    max_input_tokens: int | None = Field(default=None, description="Max input context window (tokens)")
 
 
 class ModelUpdateRequest(BaseModel):
@@ -89,6 +90,7 @@ class ModelUpdateRequest(BaseModel):
     api_base: str | None = Field(default=None, description="New API base URL")
     rpm: int | None = Field(default=None, description="Requests per minute limit")
     tpm: int | None = Field(default=None, description="Tokens per minute limit")
+    max_input_tokens: int | None = Field(default=None, description="Max input context window (tokens)")
 
 
 class ModelSummary(BaseModel):
@@ -100,6 +102,7 @@ class ModelSummary(BaseModel):
     api_base: str | None = None
     rpm: int | None = None
     tpm: int | None = None
+    max_input_tokens: int | None = None
 
     model_config = {"from_attributes": True}
 
@@ -152,6 +155,7 @@ def _parse_model_info(data: dict) -> ModelSummary:
         api_base=litellm_params.get("api_base"),
         rpm=litellm_params.get("rpm"),
         tpm=litellm_params.get("tpm"),
+        max_input_tokens=model_info.get("max_input_tokens"),
     )
 
 
@@ -204,15 +208,19 @@ async def add_model(body: ModelAddRequest, user: dict = Depends(_require_admin))
     if custom_provider:
         litellm_params["custom_llm_provider"] = custom_provider
 
+    model_info: dict = {
+        "description": f"Managed via admin UI — provider: {body.provider}"
+    }
+    if body.max_input_tokens is not None:
+        model_info["max_input_tokens"] = body.max_input_tokens
+
     async with httpx.AsyncClient(timeout=30.0) as client:
         resp = await client.post(
             f"{settings.LITELLM_BASE_URL}/model/new",
             json={
                 "model_name": body.model_name,
                 "litellm_params": litellm_params,
-                "model_info": {
-                    "description": f"Managed via admin UI — provider: {body.provider}"
-                },
+                "model_info": model_info,
             },
             headers={
                 "Authorization": f"Bearer {settings.LITELLM_MASTER_KEY}",
@@ -246,11 +254,17 @@ async def update_model(
     if body.tpm is not None:
         litellm_params["tpm"] = body.tpm
 
+    model_info: dict = {}
+    if body.max_input_tokens is not None:
+        model_info["max_input_tokens"] = body.max_input_tokens
+
     payload: dict = {}
     if body.model_name is not None:
         payload["model_name"] = body.model_name
     if litellm_params:
         payload["litellm_params"] = litellm_params
+    if model_info:
+        payload["model_info"] = model_info
 
     async with httpx.AsyncClient(timeout=30.0) as client:
         resp = await client.patch(
