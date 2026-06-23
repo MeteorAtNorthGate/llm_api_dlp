@@ -37,7 +37,7 @@ const EMPTY_FORM = {
   api_key: '',
   api_base: '',
   rpm: 500,
-  tpm: 100000,
+  tpm: 10000000,
   max_input_tokens_k: '',
 };
 

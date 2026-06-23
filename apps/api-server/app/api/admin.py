@@ -68,6 +68,19 @@ PROVIDER_CUSTOM_LLM_PROVIDER: dict[str, str] = {
     "deepseek_for_cc": "anthropic",
 }
 
+# Provider → canonical cost-map key prefix (model_info.key)
+# Determines WHICH provider's entry LiteLLM looks up in its
+# model_prices_and_context_window.json for context-window / capability
+# metadata.  Separate from custom_llm_provider — this is read-only
+# metadata lookup, NOT routing or adapter selection.
+#
+# Only needed when litellm_params.model doesn't match any entry under
+# the provider that custom_llm_provider points to (e.g. deepseek-v4-flash
+# isn't in anthropic's cost map, but IS under "deepseek/").
+PROVIDER_COST_MAP_KEY_PREFIX: dict[str, str] = {
+    "deepseek_for_cc": "deepseek",  # model_info.key = "deepseek/{model_id}"
+}
+
 # ── Schemas ──────────────────────────────────────────────────────────
 
 
@@ -213,6 +226,13 @@ async def add_model(body: ModelAddRequest, user: dict = Depends(_require_admin))
     }
     if body.max_input_tokens is not None:
         model_info["max_input_tokens"] = body.max_input_tokens
+
+    # Point LiteLLM to the correct cost-map entry so it can look up
+    # context-window / capability metadata.  This does NOT affect
+    # routing or adapter selection — it's purely a metadata hint.
+    cost_map_prefix = PROVIDER_COST_MAP_KEY_PREFIX.get(body.provider)
+    if cost_map_prefix:
+        model_info["key"] = f"{cost_map_prefix}/{body.model_id}"
 
     async with httpx.AsyncClient(timeout=30.0) as client:
         resp = await client.post(
