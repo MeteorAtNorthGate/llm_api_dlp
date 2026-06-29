@@ -222,35 +222,42 @@ export default function ChatInput({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-2 p-4 bg-base-100 border-t border-base-300">
-      {/* Model selector row */}
+      {/* Model + Thinking selector row */}
       {models.length > 0 && (
-        <div className="flex items-center gap-3 flex-wrap">
-          <label className="text-xs text-base-content/50 font-medium whitespace-nowrap">{t('chat.model')}:</label>
-          <select
-            className="select select-bordered select-xs max-w-[200px]"
-            value={selectedModel}
-            onChange={(e) => onModelChange(e.target.value)}
-            disabled={isStreaming}
-          >
-            {models.map((m) => (
-              <option key={m.id} value={m.name}>
-                {m.name}
-              </option>
-            ))}
-          </select>
-          <label className="text-xs text-base-content/50 font-medium whitespace-nowrap">{t('chat.thinking')}:</label>
-          <select
-            className="select select-bordered select-xs max-w-[140px]"
-            value={reasoningEffort}
-            onChange={(e) => onReasoningEffortChange(e.target.value)}
-            disabled={isStreaming}
-          >
-            <option value="">{t('chat.thinking.auto')}</option>
-            <option value="low">{t('chat.thinking.low')}</option>
-            <option value="medium">{t('chat.thinking.medium')}</option>
-            <option value="high">{t('chat.thinking.high')}</option>
-            <option value="max">{t('chat.thinking.max')}</option>
-          </select>
+        <div className="space-y-1">
+          <div className="flex items-center gap-3 flex-wrap">
+            <label className="text-xs text-base-content/50 font-medium whitespace-nowrap">{t('chat.model')}:</label>
+            <select
+              className="select select-bordered select-xs max-w-[200px]"
+              value={selectedModel}
+              onChange={(e) => onModelChange(e.target.value)}
+              disabled={isStreaming}
+            >
+              {models.map((m) => (
+                <option key={m.id} value={m.name}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+            <label className="text-xs text-base-content/50 font-medium whitespace-nowrap">{t('chat.thinking')}:</label>
+            <select
+              className="select select-bordered select-xs max-w-[140px]"
+              value={reasoningEffort}
+              onChange={(e) => onReasoningEffortChange(e.target.value)}
+              disabled={isStreaming}
+            >
+              <option value="">{t('chat.thinking.auto')}</option>
+              <option value="none">{t('chat.thinking.none')}</option>
+              <option value="low">{t('chat.thinking.low')}</option>
+              <option value="medium">{t('chat.thinking.medium')}</option>
+              <option value="high">{t('chat.thinking.high')}</option>
+              <option value="max">{t('chat.thinking.max')}</option>
+            </select>
+          </div>
+          <p className="text-[11px] text-base-content/40 leading-relaxed">
+            {t('chat.thinking.autoDesc')}<br />
+            {t('chat.thinking.deepseekNote')}
+          </p>
         </div>
       )}
 
