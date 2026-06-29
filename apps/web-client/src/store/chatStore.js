@@ -13,11 +13,18 @@ export const useChatStore = create((set, get) => ({
   availableModels: [],
   selectedModel: 'deepseek-v4-flash',
 
-  // Load available models from backend
+  // Load available models from backend.
+  // Special-purpose models (system-utility, Anthropic-compatible endpoints)
+  // are hidden from the chat UI — users pick them indirectly via platform routing.
   loadModels: async () => {
     try {
       const data = await chatApi.listModels();
-      const models = data.models || [];
+      const allModels = data.models || [];
+      const models = allModels.filter(
+        (m) =>
+          m.name !== 'system-utility' &&
+          m.provider !== 'deepseek_for_cc'
+      );
       set({ availableModels: models });
       const { selectedModel } = get();
       if (models.length > 0 && !models.find((m) => m.name === selectedModel)) {
