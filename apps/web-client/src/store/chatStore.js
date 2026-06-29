@@ -15,17 +15,12 @@ export const useChatStore = create((set, get) => ({
   reasoningEffort: '',  // '' = auto, 'low' | 'medium' | 'high' | 'max'
 
   // Load available models from backend.
-  // Special-purpose models (system-utility, Anthropic-compatible endpoints)
-  // are hidden from the chat UI — users pick them indirectly via platform routing.
+  // Models with hidden_from_chat=true are already filtered server-side
+  // by the chat API endpoint.
   loadModels: async () => {
     try {
       const data = await chatApi.listModels();
-      const allModels = data.models || [];
-      const models = allModels.filter(
-        (m) =>
-          m.name !== 'system-utility' &&
-          m.provider !== 'deepseek_for_cc'
-      );
+      const models = data.models || [];
       set({ availableModels: models });
       const { selectedModel } = get();
       if (models.length > 0 && !models.find((m) => m.name === selectedModel)) {

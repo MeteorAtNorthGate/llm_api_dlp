@@ -40,6 +40,7 @@ const EMPTY_FORM = {
   rpm: 500,
   tpm: 10000000,
   max_input_tokens_k: '',
+  hidden_from_chat: false,
 };
 
 export default function SystemAdminPage() {
@@ -151,6 +152,7 @@ export default function SystemAdminPage() {
         max_input_tokens: addForm.max_input_tokens_k
           ? parseInt(addForm.max_input_tokens_k) * 1000
           : null,
+        hidden_from_chat: addForm.hidden_from_chat || false,
       });
       setShowAdd(false);
       setAddForm({ ...EMPTY_FORM });
@@ -233,6 +235,22 @@ export default function SystemAdminPage() {
       setDeleteTarget(null);
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const toggleHideFromChat = async (model) => {
+    const newValue = !model.hidden_from_chat;
+    // Optimistic update
+    const updated = models.map((m) =>
+      m.id === model.id ? { ...m, hidden_from_chat: newValue } : m
+    );
+    setModels(updated);
+    try {
+      await adminApi.updateModel(model.id, { hidden_from_chat: newValue });
+    } catch (err) {
+      // Revert on failure
+      setModels(models);
+      setError(err.message || 'Failed to update model');
     }
   };
 
@@ -350,6 +368,9 @@ export default function SystemAdminPage() {
                       </div>
                     </div>
                     <div className="badge badge-success badge-sm">{t('providers.active')}</div>
+                    {m.hidden_from_chat && (
+                      <span className="badge badge-warning badge-xs text-[10px]">{t('providers.hideFromChat')}</span>
+                    )}
                   </div>
 
                   <div className="text-xs text-base-content/60 mt-3 space-y-1">
@@ -365,6 +386,12 @@ export default function SystemAdminPage() {
                   </div>
 
                   <div className="card-actions justify-end mt-3 gap-2">
+                    <button
+                      className={`btn btn-xs ${m.hidden_from_chat ? 'btn-outline btn-success' : 'btn-outline btn-warning'}`}
+                      onClick={() => toggleHideFromChat(m)}
+                    >
+                      {m.hidden_from_chat ? t('providers.showInChat') : t('providers.hideFromChat')}
+                    </button>
                     <button
                       className="btn btn-outline btn-xs"
                       onClick={() => openEdit(m)}
@@ -496,6 +523,23 @@ export default function SystemAdminPage() {
               <label className="label">
                 <span className="label-text-alt text-base-content/50">
                   {t('providers.contextHint')}
+                </span>
+              </label>
+            </div>
+
+            <div className="form-control">
+              <label className="label cursor-pointer justify-start gap-3">
+                <input
+                  type="checkbox"
+                  className="toggle toggle-warning toggle-sm"
+                  checked={addForm.hidden_from_chat}
+                  onChange={(e) => setAddForm((f) => ({ ...f, hidden_from_chat: e.target.checked }))}
+                />
+                <span className="label-text text-sm">{t('providers.hideFromChat')}</span>
+              </label>
+              <label className="label">
+                <span className="label-text-alt text-base-content/50">
+                  {t('providers.hideFromChatDesc')}
                 </span>
               </label>
             </div>

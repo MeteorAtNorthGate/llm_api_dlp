@@ -94,6 +94,7 @@ class ModelAddRequest(BaseModel):
     rpm: int | None = Field(default=None, description="Requests per minute limit")
     tpm: int | None = Field(default=None, description="Tokens per minute limit")
     max_input_tokens: int | None = Field(default=None, description="Max input context window (tokens)")
+    hidden_from_chat: bool = Field(default=False, description="Hide this model from the chat model picker")
 
 
 class ModelUpdateRequest(BaseModel):
@@ -104,6 +105,7 @@ class ModelUpdateRequest(BaseModel):
     rpm: int | None = Field(default=None, description="Requests per minute limit")
     tpm: int | None = Field(default=None, description="Tokens per minute limit")
     max_input_tokens: int | None = Field(default=None, description="Max input context window (tokens)")
+    hidden_from_chat: bool | None = Field(default=None, description="Whether to hide this model from the chat model picker")
 
 
 class ModelSummary(BaseModel):
@@ -116,6 +118,7 @@ class ModelSummary(BaseModel):
     rpm: int | None = None
     tpm: int | None = None
     max_input_tokens: int | None = None
+    hidden_from_chat: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -169,6 +172,7 @@ def _parse_model_info(data: dict) -> ModelSummary:
         rpm=litellm_params.get("rpm"),
         tpm=litellm_params.get("tpm"),
         max_input_tokens=model_info.get("max_input_tokens"),
+        hidden_from_chat=model_info.get("hidden_from_chat", False),
     )
 
 
@@ -222,7 +226,8 @@ async def add_model(body: ModelAddRequest, user: dict = Depends(_require_admin))
         litellm_params["custom_llm_provider"] = custom_provider
 
     model_info: dict = {
-        "description": f"Managed via admin UI — provider: {body.provider}"
+        "description": f"Managed via admin UI — provider: {body.provider}",
+        "hidden_from_chat": body.hidden_from_chat,
     }
     if body.max_input_tokens is not None:
         model_info["max_input_tokens"] = body.max_input_tokens
@@ -277,6 +282,8 @@ async def update_model(
     model_info: dict = {}
     if body.max_input_tokens is not None:
         model_info["max_input_tokens"] = body.max_input_tokens
+    if body.hidden_from_chat is not None:
+        model_info["hidden_from_chat"] = body.hidden_from_chat
 
     payload: dict = {}
     if body.model_name is not None:

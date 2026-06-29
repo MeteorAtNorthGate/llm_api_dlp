@@ -56,6 +56,12 @@ async def list_available_models(
         model_info = entry.get("model_info", {}) or {}
         litellm_params = entry.get("litellm_params", {}) or {}
 
+        # Skip models explicitly hidden from the chat picker.
+        # system-utility is always excluded — it's the platform's own
+        # internal model, never intended for direct user chat.
+        if model_info.get("hidden_from_chat") or model_name == "system-utility":
+            continue
+
         models.append({
             "id": model_info.get("id", model_name),
             "name": model_name,
