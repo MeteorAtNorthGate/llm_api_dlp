@@ -102,11 +102,9 @@ async def upload_attachment(
             detail=f"File exceeds max size of {settings.MAX_FILE_SIZE_MB}MB",
         )
 
-    # Determine file_type
+    # Determine file_type (strip leading dot from extension)
     mime_type = file.content_type or "application/octet-stream"
     file_type = ext.lstrip(".")
-    if ext in (".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"):
-        file_type = "image"
 
     # Create attachment record
     attachment_id = uuid.uuid4()

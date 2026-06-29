@@ -14,7 +14,6 @@ const FILE_TYPE_ICONS = {
   txt: '📃',
   csv: '📃',
   md: '📃',
-  image: '🖼️',
 };
 
 function formatSize(bytes) {

@@ -12,11 +12,11 @@ from pathlib import Path
 
 from app.core.config import settings
 
-# File extensions we can parse
+# File extensions we can parse.  Image formats intentionally excluded —
+# pixel data carries no meaningful text for DLP inspection.
 SUPPORTED_EXTENSIONS: set[str] = {
     ".pdf", ".docx", ".xlsx", ".xls",
     ".txt", ".csv", ".md",
-    ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp",
 }
 
 # Extensions that produce meaningful text

@@ -26,7 +26,7 @@ from app.schemas.chat import (
     MessageDetail,
 )
 from app.services.dlp_service import apply_masking
-from app.services.file_service import delete_file_sync, delete_prefix_sync
+from app.services.file_service import delete_prefix_sync
 from app.services.parse_service import build_injection_text
 
 router = APIRouter()
@@ -587,17 +587,13 @@ async def delete_conversation(
             detail="Conversation not found",
         )
 
-    # Clean up MinIO files for this conversation
+    # Bulk-delete all MinIO files under this conversation's prefix
     import asyncio
 
-    att_result = await session.execute(
-        select(Attachment).where(Attachment.conversation_id == conversation.id)
+    prefix = f"{user.id}/{conversation.id}/"
+    await asyncio.to_thread(
+        delete_prefix_sync, settings.MINIO_BUCKET, prefix
     )
-    for att in att_result.scalars().all():
-        if att.storage_object_key:
-            await asyncio.to_thread(
-                delete_file_sync, att.storage_bucket, att.storage_object_key
-            )
 
     # Delete messages first (attachments cascade via FK ondelete SET NULL)
     messages_result = await session.execute(

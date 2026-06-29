@@ -9,6 +9,7 @@ const MAX_FILES = 5;
 
 // Each group becomes a SEPARATE entry in the file-picker's file-type dropdown.
 // (Only effective via showOpenFilePicker; the <input> fallback uses a flat list.)
+// Image formats intentionally excluded — DLP text inspection cannot scan pixel data.
 const FILE_TYPE_GROUPS = [
   {
     description: 'All Supported Files',
@@ -20,7 +21,6 @@ const FILE_TYPE_GROUPS = [
       'text/plain': ['.txt'],
       'text/csv': ['.csv'],
       'text/markdown': ['.md'],
-      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'],
     },
   },
   { description: 'PDF Documents', accept: { 'application/pdf': ['.pdf'] } },
@@ -41,16 +41,12 @@ const FILE_TYPE_GROUPS = [
     description: 'Text Files',
     accept: { 'text/plain': ['.txt'], 'text/csv': ['.csv'], 'text/markdown': ['.md'] },
   },
-  {
-    description: 'Images',
-    accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'] },
-  },
 ];
 
 // Flat extension list for the <input> fallback — stays as one entry but at
 // least keeps the filter label short (no multi-hundred-char MIME strings).
 const ACCEPT_EXTENSIONS_STR =
-  '.pdf,.docx,.xlsx,.xls,.txt,.csv,.md,.png,.jpg,.jpeg,.gif,.bmp,.webp';
+  '.pdf,.docx,.xlsx,.xls,.txt,.csv,.md';
 
 // Quick lookup: which extensions are allowed (for client-side validation).
 const ALLOWED_EXTS = new Set(
@@ -65,11 +61,9 @@ const FILE_TYPE_ICONS = {
   txt: '📃',
   csv: '📃',
   md: '📃',
-  image: '🖼️',
 };
 
 function getFileIcon(file) {
-  if (file.type?.startsWith('image/')) return FILE_TYPE_ICONS.image;
   const ext = file.name?.split('.').pop()?.toLowerCase();
   return FILE_TYPE_ICONS[ext] || '📎';
 }
@@ -183,7 +177,6 @@ export default function ChatInput({
       'text/plain': ['.txt'],
       'text/csv': ['.csv'],
       'text/markdown': ['.md'],
-      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'],
     },
     maxSize: MAX_FILE_SIZE,
     maxFiles: MAX_FILES,
