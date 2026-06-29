@@ -12,6 +12,7 @@ export const useChatStore = create((set, get) => ({
   streamContent: '',
   availableModels: [],
   selectedModel: 'deepseek-v4-flash',
+  reasoningEffort: '',  // '' = auto, 'low' | 'medium' | 'high' | 'max'
 
   // Load available models from backend.
   // Special-purpose models (system-utility, Anthropic-compatible endpoints)
@@ -36,6 +37,7 @@ export const useChatStore = create((set, get) => ({
   },
 
   setSelectedModel: (model) => set({ selectedModel: model }),
+  setReasoningEffort: (level) => set({ reasoningEffort: level }),
 
   // Load conversation list
   loadConversations: async () => {
@@ -75,6 +77,7 @@ export const useChatStore = create((set, get) => ({
         streamContent: '',
         isStreaming: false,
         isUploading: false,
+        reasoningEffort: '',
       });
       // Refresh sidebar list
       get().loadConversations();
@@ -87,13 +90,14 @@ export const useChatStore = create((set, get) => ({
         streamContent: '',
         isStreaming: false,
         isUploading: false,
+        reasoningEffort: '',
       });
     }
   },
 
   // Send a message with optional file attachments
   sendMessage: async (content, files = []) => {
-    const { activeConversationId, messages, selectedModel } = get();
+    const { activeConversationId, messages, selectedModel, reasoningEffort } = get();
     const model = selectedModel || 'deepseek-chat';
 
     const convId = activeConversationId;
@@ -147,6 +151,9 @@ export const useChatStore = create((set, get) => ({
         conversation_id: convId,
         stream: true,
       };
+      if (reasoningEffort) {
+        payload.reasoning_effort = reasoningEffort;
+      }
 
       const response = await chatApi.completions(payload);
 

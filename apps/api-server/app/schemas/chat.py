@@ -27,6 +27,12 @@ class ChatCompletionRequest(BaseModel):
     stream: bool = True
     temperature: float | None = 0.7
     max_tokens: int | None = None
+    reasoning_effort: str | None = Field(
+        default=None,
+        description="Thinking depth: 'low', 'medium', 'high', 'max'. "
+        "LiteLLM translates this to provider-specific formats "
+        "(OpenAI reasoning.effort, DeepSeek thinking, GLM thinking+reasoning_effort).",
+    )
 
 
 class ConversationSummary(BaseModel):

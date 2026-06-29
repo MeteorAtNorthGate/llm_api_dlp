@@ -15,10 +15,12 @@ export default function ChatPage() {
     streamContent,
     availableModels,
     selectedModel,
+    reasoningEffort,
     activeConversationId,
     sendMessage,
     loadModels,
     setSelectedModel,
+    setReasoningEffort,
     newConversation,
   } = useChatStore();
   const messagesEndRef = useRef(null);
@@ -95,6 +97,8 @@ export default function ChatPage() {
           models={availableModels}
           selectedModel={selectedModel}
           onModelChange={setSelectedModel}
+          reasoningEffort={reasoningEffort}
+          onReasoningEffortChange={setReasoningEffort}
           hasActiveConversation={!!activeConversationId}
         />
       </div>

@@ -80,6 +80,8 @@ export default function ChatInput({
   models = [],
   selectedModel = '',
   onModelChange = () => {},
+  reasoningEffort = '',
+  onReasoningEffortChange = () => {},
   hasActiveConversation = false,
 }) {
   const t = useT();
@@ -222,7 +224,7 @@ export default function ChatInput({
     <form onSubmit={handleSubmit} className="flex flex-col gap-2 p-4 bg-base-100 border-t border-base-300">
       {/* Model selector row */}
       {models.length > 0 && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3 flex-wrap">
           <label className="text-xs text-base-content/50 font-medium whitespace-nowrap">{t('chat.model')}:</label>
           <select
             className="select select-bordered select-xs max-w-[200px]"
@@ -235,6 +237,19 @@ export default function ChatInput({
                 {m.name}
               </option>
             ))}
+          </select>
+          <label className="text-xs text-base-content/50 font-medium whitespace-nowrap">{t('chat.thinking')}:</label>
+          <select
+            className="select select-bordered select-xs max-w-[140px]"
+            value={reasoningEffort}
+            onChange={(e) => onReasoningEffortChange(e.target.value)}
+            disabled={isStreaming}
+          >
+            <option value="">{t('chat.thinking.auto')}</option>
+            <option value="low">{t('chat.thinking.low')}</option>
+            <option value="medium">{t('chat.thinking.medium')}</option>
+            <option value="high">{t('chat.thinking.high')}</option>
+            <option value="max">{t('chat.thinking.max')}</option>
           </select>
         </div>
       )}

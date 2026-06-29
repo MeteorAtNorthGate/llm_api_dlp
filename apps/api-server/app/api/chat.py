@@ -234,6 +234,8 @@ async def chat_completions(
     }
     if body.max_tokens:
         litellm_payload["max_tokens"] = body.max_tokens
+    if body.reasoning_effort:
+        litellm_payload["reasoning_effort"] = body.reasoning_effort
 
     if body.stream:
         return StreamingResponse(
