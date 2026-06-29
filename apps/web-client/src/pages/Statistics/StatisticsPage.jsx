@@ -212,6 +212,7 @@ export default function StatisticsPage() {
                       user={user}
                       isExpanded={expandedUsers.has(user.user_id)}
                       onToggle={() => toggleExpand(user.user_id)}
+                      t={t}
                     />
                   ))}
                 </tbody>
@@ -224,7 +225,7 @@ export default function StatisticsPage() {
   );
 }
 
-function UserRow({ user, isExpanded, onToggle }) {
+function UserRow({ user, isExpanded, onToggle, t }) {
   const hasKeys = user.api_keys && user.api_keys.length > 0;
 
   return (
