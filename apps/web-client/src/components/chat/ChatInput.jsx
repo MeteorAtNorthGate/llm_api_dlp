@@ -253,11 +253,13 @@ export default function ChatInput({
               <option value="high">{t('chat.thinking.high')}</option>
               <option value="max">{t('chat.thinking.max')}</option>
             </select>
+            <span
+              className="tooltip tooltip-bottom cursor-help text-xs text-base-content/40"
+              data-tip={`${t('chat.thinking.autoDesc')}  ${t('chat.thinking.deepseekNote')}`}
+            >
+              ?
+            </span>
           </div>
-          <p className="text-[11px] text-base-content/40 leading-relaxed">
-            {t('chat.thinking.autoDesc')}<br />
-            {t('chat.thinking.deepseekNote')}
-          </p>
         </div>
       )}
 
