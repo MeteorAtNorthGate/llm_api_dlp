@@ -10,6 +10,7 @@ import Layout from '../../components/layout/Layout';
 import Modal from '../../components/ui/Modal';
 import Spinner from '../../components/ui/Spinner';
 import { ldapApi } from '../../services/api';
+import useT from '../../hooks/useT';
 
 const EMPTY_FORM = {
   name: '',
@@ -26,27 +27,27 @@ const EMPTY_FORM = {
 
 // ── Standalone form component (module-level to avoid focus loss) ──────
 
-function LdapFormFields({ form, setForm, showPw, setShowPw, isEdit = false }) {
+function LdapFormFields({ form, setForm, showPw, setShowPw, isEdit = false, t }) {
   return (
     <div className="space-y-5">
       {/* ── Connection ── */}
       <fieldset className="border border-base-300 rounded-lg p-4">
-        <legend className="text-sm font-semibold px-2">Connection</legend>
+        <legend className="text-sm font-semibold px-2">{t('ldap.connection')}</legend>
 
         <div className="form-control mb-3">
           <label className="label pb-1">
-            <span className="label-text font-medium">Auth Name *</span>
+            <span className="label-text font-medium">{t('ldap.authName')} *</span>
           </label>
           <input
             type="text"
             className="input input-bordered"
-            placeholder="e.g., 公司内部AD域"
+            placeholder={t('ldap.authNamePlaceholder')}
             value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
           />
           <label className="label">
             <span className="label-text-alt text-base-content/50">
-              Display name shown on the login page
+              {t('ldap.authNameHint')}
             </span>
           </label>
         </div>
@@ -54,7 +55,7 @@ function LdapFormFields({ form, setForm, showPw, setShowPw, isEdit = false }) {
         <div className="grid grid-cols-3 gap-3">
           <div className="form-control col-span-2">
             <label className="label pb-1">
-              <span className="label-text font-medium">Host Address *</span>
+              <span className="label-text font-medium">{t('ldap.host')} *</span>
             </label>
             <input
               type="text"
@@ -66,7 +67,7 @@ function LdapFormFields({ form, setForm, showPw, setShowPw, isEdit = false }) {
           </div>
           <div className="form-control">
             <label className="label pb-1">
-              <span className="label-text font-medium">Port</span>
+              <span className="label-text font-medium">{t('ldap.port')}</span>
             </label>
             <select
               className="select select-bordered"
@@ -82,11 +83,11 @@ function LdapFormFields({ form, setForm, showPw, setShowPw, isEdit = false }) {
 
       {/* ── Authentication ── */}
       <fieldset className="border border-base-300 rounded-lg p-4">
-        <legend className="text-sm font-semibold px-2">Authentication</legend>
+        <legend className="text-sm font-semibold px-2">{t('ldap.authentication')}</legend>
 
         <div className="form-control mb-3">
           <label className="label pb-1">
-            <span className="label-text font-medium">Bind DN *</span>
+            <span className="label-text font-medium">{t('ldap.bindDn')} *</span>
           </label>
           <input
             type="text"
@@ -97,7 +98,7 @@ function LdapFormFields({ form, setForm, showPw, setShowPw, isEdit = false }) {
           />
           <label className="label">
             <span className="label-text-alt text-base-content/50">
-              A read-only service account DN. Do NOT use a domain admin account.
+              {t('ldap.bindDnHint')}
             </span>
           </label>
         </div>
@@ -105,24 +106,24 @@ function LdapFormFields({ form, setForm, showPw, setShowPw, isEdit = false }) {
         <div className="form-control">
           <label className="label pb-1">
             <span className="label-text font-medium">
-              Bind Password * {isEdit && <span className="text-base-content/50 font-normal">(leave blank to keep current)</span>}
+              {isEdit ? t('ldap.bindPasswordEdit') : t('ldap.bindPassword')} * {isEdit && <span className="text-base-content/50 font-normal">({t('ldap.leaveBlank')})</span>}
             </span>
           </label>
           <div className="join">
             <input
               type={showPw ? 'text' : 'password'}
               className="input input-bordered join-item flex-1 font-mono"
-              placeholder={isEdit ? 'Leave blank to keep current' : 'Enter password'}
+              placeholder={isEdit ? t('ldap.leaveBlank') : t('ldap.enterPassword')}
               value={form.bind_password}
               onChange={(e) => setForm((f) => ({ ...f, bind_password: e.target.value }))}
             />
             <button type="button" className="btn btn-outline join-item" onClick={() => setShowPw((v) => !v)}>
-              {showPw ? 'Hide' : 'Show'}
+              {showPw ? t('ldap.hide') : t('ldap.show')}
             </button>
           </div>
           <label className="label">
             <span className="label-text-alt text-warning">
-              ⚠ Password is stored in Keycloak's database in reversible form. Use a low-privilege read-only account.
+              {t('ldap.passwordHint')}
             </span>
           </label>
         </div>
@@ -130,11 +131,11 @@ function LdapFormFields({ form, setForm, showPw, setShowPw, isEdit = false }) {
 
       {/* ── User Search ── */}
       <fieldset className="border border-base-300 rounded-lg p-4">
-        <legend className="text-sm font-semibold px-2">User Search</legend>
+        <legend className="text-sm font-semibold px-2">{t('ldap.userSearch')}</legend>
 
         <div className="form-control mb-3">
           <label className="label pb-1">
-            <span className="label-text font-medium">Users DN *</span>
+            <span className="label-text font-medium">{t('ldap.usersDn')} *</span>
           </label>
           <input
             type="text"
@@ -145,20 +146,19 @@ function LdapFormFields({ form, setForm, showPw, setShowPw, isEdit = false }) {
           />
           <label className="label">
             <span className="label-text-alt text-base-content/50">
-              The base DN where Keycloak searches for user accounts. Use the root (<code>DC=...</code>) for
-              the widest coverage, or narrow to a specific OU.
+              {t('ldap.usersDnHint')}
             </span>
           </label>
         </div>
 
         <details className="cursor-pointer">
           <summary className="text-sm font-medium text-base-content/70 py-1">
-            Advanced: LDAP Attribute Names
+            {t('ldap.advanced')}
           </summary>
           <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-base-300">
             <div className="form-control">
               <label className="label pb-1">
-                <span className="label-text text-xs font-medium">Username Attribute</span>
+                <span className="label-text text-xs font-medium">{t('ldap.usernameAttr')}</span>
               </label>
               <input
                 type="text"
@@ -169,7 +169,7 @@ function LdapFormFields({ form, setForm, showPw, setShowPw, isEdit = false }) {
             </div>
             <div className="form-control">
               <label className="label pb-1">
-                <span className="label-text text-xs font-medium">RDN Attribute</span>
+                <span className="label-text text-xs font-medium">{t('ldap.rdnAttr')}</span>
               </label>
               <input
                 type="text"
@@ -180,7 +180,7 @@ function LdapFormFields({ form, setForm, showPw, setShowPw, isEdit = false }) {
             </div>
             <div className="form-control">
               <label className="label pb-1">
-                <span className="label-text text-xs font-medium">UUID Attribute</span>
+                <span className="label-text text-xs font-medium">{t('ldap.uuidAttr')}</span>
               </label>
               <input
                 type="text"
@@ -191,8 +191,7 @@ function LdapFormFields({ form, setForm, showPw, setShowPw, isEdit = false }) {
             </div>
           </div>
           <p className="text-xs text-base-content/50 mt-2">
-            These are pre-filled with Windows AD defaults (sAMAccountName / objectGUID).
-            Only change if your directory uses different attribute names.
+            {t('ldap.advancedHint')}
           </p>
         </details>
       </fieldset>
@@ -207,7 +206,7 @@ function LdapFormFields({ form, setForm, showPw, setShowPw, isEdit = false }) {
               checked={form.enabled}
               onChange={(e) => setForm((f) => ({ ...f, enabled: e.target.checked }))}
             />
-            <span className="label-text font-medium">Enabled</span>
+            <span className="label-text font-medium">{t('ldap.enabled')}</span>
           </label>
         </div>
       )}
@@ -218,6 +217,7 @@ function LdapFormFields({ form, setForm, showPw, setShowPw, isEdit = false }) {
 // ── Main page component ──────────────────────────────────────────────
 
 export default function LdapAdminPage() {
+  const t = useT();
   const [sources, setSources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -256,7 +256,7 @@ export default function LdapAdminPage() {
   const handleAdd = async () => {
     setAddError(null);
     if (!addForm.name || !addForm.host || !addForm.bind_dn || !addForm.bind_password || !addForm.users_dn) {
-      setAddError('All fields except the advanced attribute names are required.');
+      setAddError(t('ldap.allFieldsRequired'));
       return;
     }
     setAdding(true);
@@ -345,7 +345,7 @@ export default function LdapAdminPage() {
       await ldapApi.syncSource(source.id);
       setError(null);
       // Show success via a brief info
-      const msg = `Sync triggered for "${source.name}". Check Keycloak admin for progress.`;
+      const msg = t('ldap.syncTriggered', { name: source.name });
       setError(msg);
       setTimeout(() => setError(null), 5000);
     } catch (err) {
@@ -358,9 +358,9 @@ export default function LdapAdminPage() {
       <div className="p-6 max-w-3xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">LDAP Configuration</h1>
+            <h1 className="text-2xl font-bold">{t('ldap.title')}</h1>
             <p className="text-base-content/60">
-              Manage Windows AD / LDAP authentication sources
+              {t('ldap.desc')}
             </p>
           </div>
           <button
@@ -372,12 +372,12 @@ export default function LdapAdminPage() {
               setShowAdd(true);
             }}
           >
-            + Add LDAP Source
+            {t('ldap.addSource')}
           </button>
         </div>
 
         {error && (
-          <div className={`alert ${error.startsWith('Sync triggered') ? 'alert-info' : 'alert-error'}`}>
+          <div className={`alert ${error.includes(t('ldap.syncNow')) || error.startsWith('Sync triggered') ? 'alert-info' : 'alert-error'}`}>
             <span>{error}</span>
             <button className="btn btn-ghost btn-xs" onClick={() => setError(null)}>✕</button>
           </div>
@@ -387,8 +387,8 @@ export default function LdapAdminPage() {
           <div className="flex justify-center py-16"><Spinner size="lg" /></div>
         ) : sources.length === 0 ? (
           <div className="text-center py-16 text-base-content/50 border border-dashed border-base-300 rounded-lg">
-            <p className="text-lg font-medium">No LDAP sources configured</p>
-            <p className="text-sm mt-1">Add an AD / LDAP source to enable domain authentication</p>
+            <p className="text-lg font-medium">{t('ldap.noSources')}</p>
+            <p className="text-sm mt-1">{t('ldap.noSourcesHint')}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -398,36 +398,36 @@ export default function LdapAdminPage() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3">
-                        <h3 className="font-bold text-lg">{s.name || 'Unnamed'}</h3>
+                        <h3 className="font-bold text-lg">{s.name || t('ldap.unnamed')}</h3>
                         {s.enabled ? (
-                          <span className="badge badge-success badge-sm">Active</span>
+                          <span className="badge badge-success badge-sm">{t('ldap.active')}</span>
                         ) : (
-                          <span className="badge badge-ghost badge-sm">Disabled</span>
+                          <span className="badge badge-ghost badge-sm">{t('ldap.disabled')}</span>
                         )}
                       </div>
                       <div className="text-sm text-base-content/60 mt-2 grid grid-cols-2 gap-x-6 gap-y-1">
-                        <div><span className="font-medium">Host:</span> <code className="text-xs">{s.host}:{s.port}</code></div>
-                        <div><span className="font-medium">Search Base:</span> <code className="text-xs">{s.users_dn || '—'}</code></div>
-                        <div><span className="font-medium">Bind DN:</span> <code className="text-xs truncate block max-w-[280px]">{s.bind_dn || '—'}</code></div>
+                        <div><span className="font-medium">{t('ldap.host_label')}:</span> <code className="text-xs">{s.host}:{s.port}</code></div>
+                        <div><span className="font-medium">{t('ldap.searchBase')}:</span> <code className="text-xs">{s.users_dn || '—'}</code></div>
+                        <div><span className="font-medium">{t('ldap.bindDn_label')}:</span> <code className="text-xs truncate block max-w-[280px]">{s.bind_dn || '—'}</code></div>
                         <div>
-                          <span className="font-medium">Attributes:</span>{' '}
+                          <span className="font-medium">{t('ldap.attributes')}:</span>{' '}
                           <code className="text-xs">{s.username_attr}</code>
-                          {s.bind_password_set && <span className="ml-2 text-xs">🔒 password set</span>}
+                          {s.bind_password_set && <span className="ml-2 text-xs">🔒 {t('ldap.passwordSet')}</span>}
                         </div>
                       </div>
                     </div>
                   </div>
 
                   <div className="card-actions justify-end mt-3 gap-2">
-                    <button className="btn btn-outline btn-xs" onClick={() => triggerSync(s)}>Sync Now</button>
+                    <button className="btn btn-outline btn-xs" onClick={() => triggerSync(s)}>{t('ldap.syncNow')}</button>
                     <button
                       className={`btn btn-xs ${s.enabled ? 'btn-outline btn-warning' : 'btn-outline btn-success'}`}
                       onClick={() => toggleEnabled(s)}
                     >
-                      {s.enabled ? 'Disable' : 'Enable'}
+                      {s.enabled ? t('ldap.disable') : t('ldap.enable')}
                     </button>
-                    <button className="btn btn-outline btn-xs" onClick={() => openEdit(s)}>Edit</button>
-                    <button className="btn btn-error btn-xs btn-outline" onClick={() => setDeleteTarget(s)}>Delete</button>
+                    <button className="btn btn-outline btn-xs" onClick={() => openEdit(s)}>{t('ldap.edit')}</button>
+                    <button className="btn btn-error btn-xs btn-outline" onClick={() => setDeleteTarget(s)}>{t('ldap.delete')}</button>
                   </div>
                 </div>
               </div>
@@ -436,22 +436,22 @@ export default function LdapAdminPage() {
         )}
 
         {/* ── Add Modal ── */}
-        <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Add LDAP Auth Source" size="lg">
+        <Modal open={showAdd} onClose={() => setShowAdd(false)} title={t('ldap.addTitle')} size="lg">
           <div className="space-y-4">
-            <LdapFormFields form={addForm} setForm={setAddForm} showPw={showPassword} setShowPw={setShowPassword} />
+            <LdapFormFields form={addForm} setForm={setAddForm} showPw={showPassword} setShowPw={setShowPassword} t={t} />
             {addError && <div className="alert alert-error text-sm"><span>{addError}</span></div>}
             <div className="modal-action">
-              <button className="btn btn-ghost" onClick={() => setShowAdd(false)}>Cancel</button>
+              <button className="btn btn-ghost" onClick={() => setShowAdd(false)}>{t('common.cancel')}</button>
               <button className="btn btn-primary" onClick={handleAdd} disabled={adding}>
                 {adding && <span className="loading loading-spinner loading-sm" />}
-                Add Source
+                {t('ldap.addBtn')}
               </button>
             </div>
           </div>
         </Modal>
 
         {/* ── Edit Modal ── */}
-        <Modal open={showEdit} onClose={() => setShowEdit(false)} title={`Edit: ${editSource?.name || 'LDAP Source'}`} size="lg">
+        <Modal open={showEdit} onClose={() => setShowEdit(false)} title={`${t('ldap.editTitle')}: ${editSource?.name || t('ldap.unnamed')}`} size="lg">
           {editSource && (
             <div className="space-y-4">
               <div className="flex items-center gap-3 p-3 bg-base-200 rounded-lg text-sm">
@@ -459,13 +459,13 @@ export default function LdapAdminPage() {
                 <span className="text-base-content/50">→</span>
                 <code>{editSource.users_dn}</code>
               </div>
-              <LdapFormFields form={editForm} setForm={setEditForm} showPw={showEditPassword} setShowPw={setShowEditPassword} isEdit />
+              <LdapFormFields form={editForm} setForm={setEditForm} showPw={showEditPassword} setShowPw={setShowEditPassword} isEdit t={t} />
               {editError && <div className="alert alert-error text-sm"><span>{editError}</span></div>}
               <div className="modal-action">
-                <button className="btn btn-ghost" onClick={() => setShowEdit(false)}>Cancel</button>
+                <button className="btn btn-ghost" onClick={() => setShowEdit(false)}>{t('common.cancel')}</button>
                 <button className="btn btn-primary" onClick={handleEdit} disabled={editing}>
                   {editing && <span className="loading loading-spinner loading-sm" />}
-                  Save Changes
+                  {t('ldap.saveChanges')}
                 </button>
               </div>
             </div>
@@ -473,7 +473,7 @@ export default function LdapAdminPage() {
         </Modal>
 
         {/* ── Delete Modal ── */}
-        <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete LDAP Source">
+        <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title={t('ldap.deleteTitle')}>
           {deleteTarget && (
             <div className="space-y-4">
               <div className="alert alert-warning">
@@ -481,15 +481,15 @@ export default function LdapAdminPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
                 <div>
-                  <p className="font-bold">Remove "{deleteTarget.name || 'Unnamed'}"?</p>
-                  <p className="text-sm">This deletes the LDAP provider from Keycloak. Domain users will no longer be able to log in via this source.</p>
+                  <p className="font-bold">{t('ldap.deleteConfirm', { name: deleteTarget.name || t('ldap.unnamed') })}</p>
+                  <p className="text-sm">{t('ldap.deleteDesc')}</p>
                 </div>
               </div>
               <div className="modal-action">
-                <button className="btn btn-ghost" onClick={() => setDeleteTarget(null)}>Cancel</button>
+                <button className="btn btn-ghost" onClick={() => setDeleteTarget(null)}>{t('common.cancel')}</button>
                 <button className="btn btn-error" onClick={confirmDelete} disabled={deleting}>
                   {deleting && <span className="loading loading-spinner loading-sm" />}
-                  Delete
+                  {t('common.delete')}
                 </button>
               </div>
             </div>

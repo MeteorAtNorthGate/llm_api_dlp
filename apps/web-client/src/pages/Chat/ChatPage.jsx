@@ -5,8 +5,10 @@ import Layout from '../../components/layout/Layout';
 import MessageBubble from '../../components/chat/MessageBubble';
 import ChatInput from '../../components/chat/ChatInput';
 import { useChatStore } from '../../store/chatStore';
+import useT from '../../hooks/useT';
 
 export default function ChatPage() {
+  const t = useT();
   const {
     messages,
     isStreaming,
@@ -51,10 +53,9 @@ export default function ChatPage() {
           {messages.length === 0 && !isStreaming && (
             <div className="flex items-center justify-center h-full">
               <div className="text-center space-y-3 max-w-md">
-                <h2 className="text-2xl font-bold">LLM Platform</h2>
+                <h2 className="text-2xl font-bold">{t('chat.welcome')}</h2>
                 <p className="text-base-content/60">
-                  Start a conversation. Your messages are processed through
-                  enterprise DLP to protect sensitive data.
+                  {t('chat.welcomeDesc')}
                 </p>
               </div>
             </div>

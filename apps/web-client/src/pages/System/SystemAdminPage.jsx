@@ -6,6 +6,7 @@ import Layout from '../../components/layout/Layout';
 import Modal from '../../components/ui/Modal';
 import Spinner from '../../components/ui/Spinner';
 import { adminApi } from '../../services/api';
+import useT from '../../hooks/useT';
 
 const PROVIDERS = [
   { value: 'openai', label: 'OpenAI', defaultBase: 'https://api.openai.com/v1' },
@@ -42,6 +43,7 @@ const EMPTY_FORM = {
 };
 
 export default function SystemAdminPage() {
+  const t = useT();
   const [models, setModels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -242,13 +244,13 @@ export default function SystemAdminPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">API Providers</h1>
+            <h1 className="text-2xl font-bold">{t('providers.title')}</h1>
             <p className="text-base-content/60">
-              Manage LLM provider models and API keys
+              {t('providers.desc')}
             </p>
           </div>
           <button className="btn btn-primary" onClick={() => { setAddForm({ ...EMPTY_FORM }); setAddError(null); setShowAdd(true); }}>
-            + Add Model
+            {t('providers.addModel')}
           </button>
         </div>
 
@@ -263,9 +265,9 @@ export default function SystemAdminPage() {
         {/* Platform Settings */}
         <div className="card bg-base-100 shadow-sm border border-base-300">
           <div className="card-body p-5">
-            <h2 className="card-title text-base">Platform Settings</h2>
+            <h2 className="card-title text-base">{t('providers.platformSettings')}</h2>
             <p className="text-sm text-base-content/60">
-              Configure platform-wide settings. Changes take effect immediately — no restart required.
+              {t('providers.platformSettingsDesc')}
             </p>
 
             {settingsLoading ? (
@@ -275,9 +277,9 @@ export default function SystemAdminPage() {
                 {/* LiteLLM Public URL */}
                 <div className="form-control">
                   <label className="label pb-1">
-                    <span className="label-text font-medium">LiteLLM Public URL</span>
+                    <span className="label-text font-medium">{t('providers.litellmUrl')}</span>
                     <span className="label-text-alt text-base-content/50">
-                      Shown to users after they generate an API key
+                      {t('providers.litellmUrlHint')}
                     </span>
                   </label>
                   <div className="join">
@@ -301,14 +303,12 @@ export default function SystemAdminPage() {
                       }
                     >
                       {settingsSaving && <span className="loading loading-spinner loading-xs" />}
-                      Save
+                      {t('providers.save')}
                     </button>
                   </div>
                   <label className="label">
                     <span className="label-text-alt text-base-content/50">
-                      This is the base URL users configure in their SDKs (e.g., OpenAI base_url,
-                      Anthropic base_url). LiteLLM proxy runs on port 4000 — use DNS/nginx to map
-                      this domain to the LiteLLM container.
+                      {t('providers.litellmUrlDesc')}
                     </span>
                   </label>
                 </div>
@@ -333,8 +333,8 @@ export default function SystemAdminPage() {
           <div className="flex justify-center py-16"><Spinner size="lg" /></div>
         ) : models.length === 0 ? (
           <div className="text-center py-16 text-base-content/50 border border-dashed border-base-300 rounded-lg">
-            <p className="text-lg font-medium">No models configured</p>
-            <p className="text-sm mt-1">Add your first LLM provider model to get started</p>
+            <p className="text-lg font-medium">{t('providers.noModels')}</p>
+            <p className="text-sm mt-1">{t('providers.noModelsHint')}</p>
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
@@ -349,19 +349,19 @@ export default function SystemAdminPage() {
                         <code className="text-xs text-base-content/50">{m.model_id}</code>
                       </div>
                     </div>
-                    <div className="badge badge-success badge-sm">Active</div>
+                    <div className="badge badge-success badge-sm">{t('providers.active')}</div>
                   </div>
 
                   <div className="text-xs text-base-content/60 mt-3 space-y-1">
                     {m.api_base && (
-                      <div><span className="font-medium">Base URL:</span> {m.api_base}</div>
+                      <div><span className="font-medium">{t('providers.baseUrl')}:</span> {m.api_base}</div>
                     )}
                     {m.max_input_tokens && (
-                      <div><span className="font-medium">Context:</span> {(m.max_input_tokens / 1000).toLocaleString()}K tokens</div>
+                      <div><span className="font-medium">{t('providers.context')}:</span> {(m.max_input_tokens / 1000).toLocaleString()}K tokens</div>
                     )}
                     {m.rpm && <div><span className="font-medium">RPM:</span> {m.rpm}</div>}
                     {m.tpm && <div><span className="font-medium">TPM:</span> {m.tpm.toLocaleString()}</div>}
-                    <div><span className="font-medium">ID:</span> <code className="text-xs">{m.id?.slice(0, 12)}...</code></div>
+                    <div><span className="font-medium">{t('providers.id')}:</span> <code className="text-xs">{m.id?.slice(0, 12)}...</code></div>
                   </div>
 
                   <div className="card-actions justify-end mt-3 gap-2">
@@ -369,13 +369,13 @@ export default function SystemAdminPage() {
                       className="btn btn-outline btn-xs"
                       onClick={() => openEdit(m)}
                     >
-                      Edit
+                      {t('providers.edit')}
                     </button>
                     <button
                       className="btn btn-error btn-xs btn-outline"
                       onClick={() => setDeleteTarget(m)}
                     >
-                      Delete
+                      {t('providers.delete')}
                     </button>
                   </div>
                 </div>
@@ -385,11 +385,11 @@ export default function SystemAdminPage() {
         )}
 
         {/* ── Add Model Modal ──────────────────────────── */}
-        <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Add LLM Provider Model" size="lg">
+        <Modal open={showAdd} onClose={() => setShowAdd(false)} title={t('providers.addTitle')} size="lg">
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="form-control">
-                <label className="label"><span className="label-text font-medium">Model Name *</span></label>
+                <label className="label"><span className="label-text font-medium">{t('providers.modelName')} *</span></label>
                 <input
                   type="text" className="input input-bordered"
                   placeholder="e.g., gpt-4o"
@@ -398,7 +398,7 @@ export default function SystemAdminPage() {
                 />
               </div>
               <div className="form-control">
-                <label className="label"><span className="label-text font-medium">Provider *</span></label>
+                <label className="label"><span className="label-text font-medium">{t('providers.provider')} *</span></label>
                 <select
                   className="select select-bordered"
                   value={addForm.provider}
@@ -412,7 +412,7 @@ export default function SystemAdminPage() {
             </div>
 
             <div className="form-control">
-              <label className="label"><span className="label-text font-medium">Model ID *</span></label>
+              <label className="label"><span className="label-text font-medium">{t('providers.modelId')} *</span></label>
               {addForm.provider === 'custom' ? (
                 <>
                   <input
@@ -422,7 +422,7 @@ export default function SystemAdminPage() {
                     onChange={(e) => setAddForm((f) => ({ ...f, model_id: e.target.value }))}
                   />
                   <label className="label"><span className="label-text-alt text-base-content/50">
-                    Enter the full LiteLLM model path (provider/model-name). See <a href="https://docs.litellm.ai/docs/providers" target="_blank" className="link">LiteLLM docs</a> for all supported providers.
+                    {t('providers.customModelHint')} <a href="https://docs.litellm.ai/docs/providers" target="_blank" className="link">LiteLLM docs</a> {t('providers.customModelHint2')}
                   </span></label>
                 </>
               ) : (
@@ -434,14 +434,14 @@ export default function SystemAdminPage() {
                     onChange={(e) => setAddForm((f) => ({ ...f, model_id: e.target.value }))}
                   />
                   <label className="label"><span className="label-text-alt text-base-content/50">
-                    Provider model name. LiteLLM will call this as <code className="font-bold">{addForm.provider}/{addForm.model_id || 'model-id'}</code>
+                    {t('providers.modelIdHint')} <code className="font-bold">{addForm.provider}/{addForm.model_id || 'model-id'}</code>
                   </span></label>
                 </>
               )}
             </div>
 
             <div className="form-control">
-              <label className="label"><span className="label-text font-medium">API Key *</span></label>
+              <label className="label"><span className="label-text font-medium">{t('providers.apiKey')} *</span></label>
               <input
                 type="password" className="input input-bordered font-mono"
                 placeholder="sk-..."
@@ -449,15 +449,15 @@ export default function SystemAdminPage() {
                 onChange={(e) => setAddForm((f) => ({ ...f, api_key: e.target.value }))}
               />
               <label className="label"><span className="label-text-alt text-base-content/50">
-                The API key from the LLM provider. Stored securely and never shown again.
+                {t('providers.apiKeyHint')}
               </span></label>
             </div>
 
             <div className="form-control">
-              <label className="label"><span className="label-text font-medium">API Base URL</span></label>
+              <label className="label"><span className="label-text font-medium">{t('providers.apiBaseUrl')}</span></label>
               <input
                 type="text" className="input input-bordered font-mono text-sm"
-                placeholder="Auto-detected from provider"
+                placeholder={t('providers.apiBasePlaceholder')}
                 value={addForm.api_base}
                 onChange={(e) => setAddForm((f) => ({ ...f, api_base: e.target.value }))}
               />
@@ -465,7 +465,7 @@ export default function SystemAdminPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="form-control">
-                <label className="label"><span className="label-text font-medium">RPM Limit</span></label>
+                <label className="label"><span className="label-text font-medium">{t('providers.rpmLimit')}</span></label>
                 <input
                   type="number" className="input input-bordered"
                   value={addForm.rpm}
@@ -473,7 +473,7 @@ export default function SystemAdminPage() {
                 />
               </div>
               <div className="form-control">
-                <label className="label"><span className="label-text font-medium">TPM Limit</span></label>
+                <label className="label"><span className="label-text font-medium">{t('providers.tpmLimit')}</span></label>
                 <input
                   type="number" className="input input-bordered"
                   value={addForm.tpm}
@@ -484,8 +484,8 @@ export default function SystemAdminPage() {
 
             <div className="form-control">
               <label className="label">
-                <span className="label-text font-medium">Context Window (K tokens)</span>
-                <span className="label-text-alt text-base-content/50">Optional — model default if empty</span>
+                <span className="label-text font-medium">{t('providers.contextWindow')}</span>
+                <span className="label-text-alt text-base-content/50">{t('providers.contextOptional')}</span>
               </label>
               <input
                 type="number" className="input input-bordered"
@@ -495,7 +495,7 @@ export default function SystemAdminPage() {
               />
               <label className="label">
                 <span className="label-text-alt text-base-content/50">
-                  LiteLLM defaults to 128K if not set. For DeepSeek 1M context, enter 1000.
+                  {t('providers.contextHint')}
                 </span>
               </label>
             </div>
@@ -503,17 +503,17 @@ export default function SystemAdminPage() {
             {addError && <div className="alert alert-error text-sm"><span>{addError}</span></div>}
 
             <div className="modal-action">
-              <button className="btn btn-ghost" onClick={() => setShowAdd(false)}>Cancel</button>
+              <button className="btn btn-ghost" onClick={() => setShowAdd(false)}>{t('common.cancel')}</button>
               <button className="btn btn-primary" onClick={handleAdd} disabled={adding}>
                 {adding && <span className="loading loading-spinner loading-sm" />}
-                Add Model
+                {t('providers.addBtn')}
               </button>
             </div>
           </div>
         </Modal>
 
         {/* ── Edit Model Modal ──────────────────────────── */}
-        <Modal open={showEdit} onClose={() => setShowEdit(false)} title={`Edit: ${editModel?.model_name || ''}`} size="lg">
+        <Modal open={showEdit} onClose={() => setShowEdit(false)} title={`${t('providers.editTitle')}: ${editModel?.model_name || ''}`} size="lg">
           {editModel && (
             <div className="space-y-4">
               <div className="flex items-center gap-3 p-3 bg-base-200 rounded-lg">
@@ -522,7 +522,7 @@ export default function SystemAdminPage() {
               </div>
 
               <div className="form-control">
-                <label className="label"><span className="label-text font-medium">Model Name</span></label>
+                <label className="label"><span className="label-text font-medium">{t('providers.modelName')}</span></label>
                 <input
                   type="text" className="input input-bordered"
                   value={editForm.model_name}
@@ -531,12 +531,12 @@ export default function SystemAdminPage() {
               </div>
 
               <div className="form-control">
-                <label className="label"><span className="label-text font-medium">New API Key</span></label>
+                <label className="label"><span className="label-text font-medium">{t('providers.newApiKey')}</span></label>
                 <div className="join">
                   <input
                     type={showKey ? 'text' : 'password'}
                     className="input input-bordered join-item flex-1 font-mono"
-                    placeholder="Leave blank to keep current key"
+                    placeholder={t('providers.keyPlaceholder')}
                     value={editForm.api_key}
                     onChange={(e) => setEditForm((f) => ({ ...f, api_key: e.target.value }))}
                   />
@@ -544,16 +544,16 @@ export default function SystemAdminPage() {
                     className="btn btn-outline join-item"
                     onClick={() => setShowKey((v) => !v)}
                   >
-                    {showKey ? 'Hide' : 'Show'}
+                    {showKey ? t('providers.hide') : t('providers.show')}
                   </button>
                 </div>
                 <label className="label"><span className="label-text-alt text-base-content/50">
-                  Current key is hidden for security. Enter a new key to replace it.
+                  {t('providers.keyHint')}
                 </span></label>
               </div>
 
               <div className="form-control">
-                <label className="label"><span className="label-text font-medium">API Base URL</span></label>
+                <label className="label"><span className="label-text font-medium">{t('providers.apiBaseUrl')}</span></label>
                 <input
                   type="text" className="input input-bordered font-mono text-sm"
                   value={editForm.api_base}
@@ -563,7 +563,7 @@ export default function SystemAdminPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="form-control">
-                  <label className="label"><span className="label-text font-medium">RPM Limit</span></label>
+                  <label className="label"><span className="label-text font-medium">{t('providers.rpmLimit')}</span></label>
                   <input
                     type="number" className="input input-bordered"
                     value={editForm.rpm ?? ''}
@@ -571,7 +571,7 @@ export default function SystemAdminPage() {
                   />
                 </div>
                 <div className="form-control">
-                  <label className="label"><span className="label-text font-medium">TPM Limit</span></label>
+                  <label className="label"><span className="label-text font-medium">{t('providers.tpmLimit')}</span></label>
                   <input
                     type="number" className="input input-bordered"
                     value={editForm.tpm ?? ''}
@@ -582,8 +582,8 @@ export default function SystemAdminPage() {
 
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text font-medium">Context Window (K tokens)</span>
-                  <span className="label-text-alt text-base-content/50">Leave empty to keep current</span>
+                  <span className="label-text font-medium">{t('providers.contextWindow')}</span>
+                  <span className="label-text-alt text-base-content/50">{t('providers.contextEditHint')}</span>
                 </label>
                 <input
                   type="number" className="input input-bordered"
@@ -593,7 +593,7 @@ export default function SystemAdminPage() {
                 />
                 <label className="label">
                   <span className="label-text-alt text-base-content/50">
-                    LiteLLM defaults to 128K if not set. For DeepSeek 1M context, enter 1000.
+                    {t('providers.contextHint')}
                   </span>
                 </label>
               </div>
@@ -601,10 +601,10 @@ export default function SystemAdminPage() {
               {editError && <div className="alert alert-error text-sm"><span>{editError}</span></div>}
 
               <div className="modal-action">
-                <button className="btn btn-ghost" onClick={() => setShowEdit(false)}>Cancel</button>
+                <button className="btn btn-ghost" onClick={() => setShowEdit(false)}>{t('common.cancel')}</button>
                 <button className="btn btn-primary" onClick={handleEdit} disabled={editing}>
                   {editing && <span className="loading loading-spinner loading-sm" />}
-                  Save Changes
+                  {t('providers.saveChanges')}
                 </button>
               </div>
             </div>
@@ -612,7 +612,7 @@ export default function SystemAdminPage() {
         </Modal>
 
         {/* ── Delete Confirmation Modal ─────────────────── */}
-        <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete Model">
+        <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title={t('providers.deleteTitle')}>
           {deleteTarget && (
             <div className="space-y-4">
               <div className="alert alert-warning">
@@ -620,16 +620,16 @@ export default function SystemAdminPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
                 <div>
-                  <p className="font-bold">Remove "{deleteTarget.model_name}"?</p>
-                  <p className="text-sm">This model will no longer be available for chat or API use. This action cannot be undone.</p>
+                  <p className="font-bold">{t('providers.deleteConfirm', { name: deleteTarget.model_name })}</p>
+                  <p className="text-sm">{t('providers.deleteDesc')}</p>
                 </div>
               </div>
 
               <div className="modal-action">
-                <button className="btn btn-ghost" onClick={() => setDeleteTarget(null)}>Cancel</button>
+                <button className="btn btn-ghost" onClick={() => setDeleteTarget(null)}>{t('common.cancel')}</button>
                 <button className="btn btn-error" onClick={confirmDelete} disabled={deleting}>
                   {deleting && <span className="loading loading-spinner loading-sm" />}
-                  Delete
+                  {t('common.delete')}
                 </button>
               </div>
             </div>

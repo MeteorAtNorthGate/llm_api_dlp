@@ -20,6 +20,7 @@ import Layout from '../../components/layout/Layout';
 import Spinner from '../../components/ui/Spinner';
 import { useAuth } from '../../hooks/useAuth';
 import { statsApi } from '../../services/api';
+import useT, { useMessages } from '../../hooks/useT';
 
 function getDefaultStart() {
   const d = new Date();
@@ -51,6 +52,8 @@ export default function UsagePage() {
   const { userId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const t = useT();
+  const messages = useMessages();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -76,7 +79,7 @@ export default function UsagePage() {
       const status = err?.response?.status;
       const detail = err?.response?.data?.detail;
       if (status === 403 && !isAdmin) {
-        setError('You can only view your own usage.');
+        setError(t('usage.onlyOwn'));
         navigate('/usage', { replace: true });
         return;
       }
@@ -92,12 +95,12 @@ export default function UsagePage() {
 
   const isDateInvalid = startDate > endDate;
 
-  // Transform daily data for Recharts (ensure numeric values)
+  // Transform daily data for Recharts (ensure numeric values, use translated labels)
   const chartData = (usage?.daily_usage || []).map((d) => ({
     date: d.date,
-    'Input (Cache Miss)': d.input_tokens_cache_miss,
-    'Input (Cache Hit)': d.input_tokens_cache_hit,
-    'Output': d.output_tokens,
+    [messages['usage.inputMiss']]: d.input_tokens_cache_miss,
+    [messages['usage.inputHit']]: d.input_tokens_cache_hit,
+    [messages['usage.output']]: d.output_tokens,
   }));
 
   return (
@@ -107,11 +110,11 @@ export default function UsagePage() {
         <div>
           <h1 className="text-2xl font-bold">
             {isViewingOther && usage
-              ? `Usage: ${usage.username}`
-              : 'My Usage'}
+              ? `${t('usage.titleOther')}: ${usage.username}`
+              : t('usage.title')}
           </h1>
           <p className="text-base-content/60">
-            Daily token consumption breakdown
+            {t('usage.desc')}
           </p>
         </div>
 
@@ -121,7 +124,7 @@ export default function UsagePage() {
             <div className="flex flex-wrap items-end gap-4">
               <div className="form-control">
                 <label className="label pb-1">
-                  <span className="label-text text-xs font-semibold">Start Date</span>
+                  <span className="label-text text-xs font-semibold">{t('stats.startDate')}</span>
                 </label>
                 <input
                   type="date"
@@ -133,7 +136,7 @@ export default function UsagePage() {
               </div>
               <div className="form-control">
                 <label className="label pb-1">
-                  <span className="label-text text-xs font-semibold">End Date</span>
+                  <span className="label-text text-xs font-semibold">{t('stats.endDate')}</span>
                 </label>
                 <input
                   type="date"
@@ -146,33 +149,33 @@ export default function UsagePage() {
               </div>
               <div className="form-control">
                 <label className="label pb-1 invisible">
-                  <span className="label-text text-xs">Action</span>
+                  <span className="label-text text-xs">{t('stats.refresh')}</span>
                 </label>
                 <button
                   className="btn btn-sm btn-primary"
                   onClick={fetchUsage}
                   disabled={isDateInvalid || loading}
                 >
-                  {loading ? 'Loading...' : 'Refresh'}
+                  {loading ? t('stats.loading') : t('stats.refresh')}
                 </button>
               </div>
               {isViewingOther && isAdmin && (
                 <div className="form-control">
                   <label className="label pb-1 invisible">
-                    <span className="label-text text-xs">Back</span>
+                    <span className="label-text text-xs">{t('common.back')}</span>
                   </label>
                   <button
                     className="btn btn-sm btn-ghost"
                     onClick={() => navigate('/statistics')}
                   >
-                    ← Back to Statistics
+                    {t('usage.backToStats')}
                   </button>
                 </div>
               )}
             </div>
             {isDateInvalid && (
               <p className="text-error text-xs mt-2">
-                Start date must be on or before end date.
+                {t('stats.dateError')}
               </p>
             )}
           </div>
@@ -189,14 +192,14 @@ export default function UsagePage() {
           <div className="alert alert-error">
             <span>{error}</span>
             <button className="btn btn-sm btn-ghost" onClick={fetchUsage}>
-              Retry
+              {t('stats.retry')}
             </button>
           </div>
         )}
 
         {!loading && !error && usage && chartData.length === 0 && (
           <div className="text-center py-16 text-base-content/50">
-            <p>No usage data found for this period.</p>
+            <p>{t('stats.noData')}</p>
           </div>
         )}
 
@@ -205,25 +208,25 @@ export default function UsagePage() {
             {/* Summary Card */}
             <div className="card bg-base-100 shadow-sm border border-base-300">
               <div className="card-body p-5">
-                <h2 className="card-title text-base">Summary</h2>
+                <h2 className="card-title text-base">{t('usage.summary')}</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-2">
                   <StatBox
-                    label="Input (Cache Miss)"
+                    label={messages['usage.inputMiss']}
                     value={usage.summary.input_tokens_cache_miss}
                     colorClass="text-primary"
                   />
                   <StatBox
-                    label="Input (Cache Hit)"
+                    label={messages['usage.inputHit']}
                     value={usage.summary.input_tokens_cache_hit}
                     colorClass="text-success"
                   />
                   <StatBox
-                    label="Output"
+                    label={messages['usage.output']}
                     value={usage.summary.output_tokens}
                     colorClass="text-warning"
                   />
                   <StatBox
-                    label="Total Tokens"
+                    label={messages['usage.totalTokens']}
                     value={usage.summary.total_tokens}
                   />
                 </div>
@@ -233,7 +236,7 @@ export default function UsagePage() {
             {/* Chart */}
             <div className="card bg-base-100 shadow-sm border border-base-300">
               <div className="card-body p-5">
-                <h2 className="card-title text-base">Daily Usage</h2>
+                <h2 className="card-title text-base">{t('usage.dailyUsage')}</h2>
                 <div className="mt-2">
                   <ResponsiveContainer width="100%" height={400}>
                     <LineChart
@@ -259,7 +262,7 @@ export default function UsagePage() {
                       <Legend />
                       <Line
                         type="monotone"
-                        dataKey="Input (Cache Miss)"
+                        dataKey={messages['usage.inputMiss']}
                         stroke="oklch(0.55 0.2 260)"
                         strokeWidth={2}
                         dot={false}
@@ -267,7 +270,7 @@ export default function UsagePage() {
                       />
                       <Line
                         type="monotone"
-                        dataKey="Input (Cache Hit)"
+                        dataKey={messages['usage.inputHit']}
                         stroke="oklch(0.65 0.2 150)"
                         strokeWidth={2}
                         dot={false}
@@ -275,7 +278,7 @@ export default function UsagePage() {
                       />
                       <Line
                         type="monotone"
-                        dataKey="Output"
+                        dataKey={messages['usage.output']}
                         stroke="oklch(0.7 0.18 85)"
                         strokeWidth={2}
                         dot={false}

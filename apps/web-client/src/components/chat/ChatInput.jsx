@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
+import useT from '../../hooks/useT';
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 const MAX_FILES = 5;
@@ -87,6 +88,7 @@ export default function ChatInput({
   onModelChange = () => {},
   hasActiveConversation = false,
 }) {
+  const t = useT();
   const [input, setInput] = useState('');
   const [files, setFiles] = useState([]);
   const textareaRef = useRef(null);
@@ -228,7 +230,7 @@ export default function ChatInput({
       {/* Model selector row */}
       {models.length > 0 && (
         <div className="flex items-center gap-2">
-          <label className="text-xs text-base-content/50 font-medium whitespace-nowrap">Model:</label>
+          <label className="text-xs text-base-content/50 font-medium whitespace-nowrap">{t('chat.model')}:</label>
           <select
             className="select select-bordered select-xs max-w-[200px]"
             value={selectedModel}
@@ -296,7 +298,7 @@ export default function ChatInput({
           className="btn btn-ghost btn-circle btn-sm flex-shrink-0"
           onClick={openFilePicker}
           disabled={isStreaming}
-          title={hasActiveConversation ? 'Attach files' : 'Send a message first to start a conversation'}
+          title={hasActiveConversation ? t('chat.attachFiles') : t('chat.attachHint')}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
@@ -306,7 +308,7 @@ export default function ChatInput({
         <textarea
           ref={textareaRef}
           className="textarea textarea-bordered flex-1 min-h-[44px] max-h-[200px] resize-none"
-          placeholder={isStreaming ? 'Waiting for response...' : isDragActive ? 'Drop files here...' : 'Type a message... (Enter to send, Shift+Enter for new line)'}
+          placeholder={isStreaming ? t('chat.waiting') : isDragActive ? t('chat.dropFiles') : t('chat.placeholder')}
           value={input}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}

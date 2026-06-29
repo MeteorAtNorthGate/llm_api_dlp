@@ -1,8 +1,10 @@
 /** KeyCard — displays a single API key summary. */
 
 import { formatDate } from '../../utils/format';
+import useT from '../../hooks/useT';
 
 export default function KeyCard({ keyData, onRevoke, onDelete }) {
+  const t = useT();
   const isExpired = keyData.expires_at && new Date(keyData.expires_at) < new Date();
   const isInactive = !keyData.is_active || isExpired;
 
@@ -19,34 +21,34 @@ export default function KeyCard({ keyData, onRevoke, onDelete }) {
             )}
           </div>
           <div className={`badge ${isInactive ? 'badge-error' : 'badge-success'} badge-sm`}>
-            {isInactive ? 'Inactive' : 'Active'}
+            {isInactive ? t('keys.inactive') : t('keys.active')}
           </div>
         </div>
 
         <div className="text-xs text-base-content/60 mt-2 space-y-1">
           {keyData.models.length > 0 && (
             <div>
-              <span className="font-medium">Models:</span>{' '}
+              <span className="font-medium">{t('keys.models_label')}:</span>{' '}
               {keyData.models.join(', ')}
             </div>
           )}
           {keyData.max_budget && (
             <div>
-              <span className="font-medium">Budget:</span> ${keyData.max_budget}
+              <span className="font-medium">{t('keys.budget')}:</span> ${keyData.max_budget}
             </div>
           )}
           {keyData.rpm_limit && (
             <div>
-              <span className="font-medium">RPM:</span> {keyData.rpm_limit}
+              <span className="font-medium">{t('keys.rpm')}:</span> {keyData.rpm_limit}
             </div>
           )}
           <div>
-            <span className="font-medium">Created:</span>{' '}
+            <span className="font-medium">{t('keys.created')}:</span>{' '}
             {formatDate(keyData.created_at)}
           </div>
           {keyData.expires_at && (
             <div>
-              <span className="font-medium">Expires:</span>{' '}
+              <span className="font-medium">{t('keys.expires')}:</span>{' '}
               {formatDate(keyData.expires_at)}
             </div>
           )}
@@ -58,14 +60,14 @@ export default function KeyCard({ keyData, onRevoke, onDelete }) {
               className="btn btn-error btn-xs btn-outline"
               onClick={() => onRevoke(keyData.id)}
             >
-              Revoke
+              {t('keys.revoke')}
             </button>
           )}
           <button
             className="btn btn-ghost btn-xs btn-outline text-base-content/50"
             onClick={() => onDelete(keyData.id)}
           >
-            Delete
+            {t('keys.delete')}
           </button>
         </div>
       </div>

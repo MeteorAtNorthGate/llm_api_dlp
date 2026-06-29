@@ -4,12 +4,14 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import Spinner from '../components/ui/Spinner';
+import useT from '../hooks/useT';
 
 export default function LoginPage() {
   const { isAuthenticated, isLoading, login, redirectToLogin } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [error, setError] = useState(null);
+  const t = useT();
 
   const callbackRef = useRef(false);
   const redirectedRef = useRef(false);
@@ -32,7 +34,7 @@ export default function LoginPage() {
     if (!codeVerifier) return; // PKCE verifier already consumed (StrictMode)
 
     login(code, redirectUri, codeVerifier).catch((err) => {
-      setError('Login failed. Please try again.');
+      setError(t('login.failed'));
       console.error('Login error:', err);
     });
   }, [login, searchParams]);
@@ -69,7 +71,7 @@ export default function LoginPage() {
               <span>{error}</span>
             </div>
             <button className="btn btn-primary" onClick={() => { callbackRef.current = false; setError(null); }}>
-              Try Again
+              {t('login.tryAgain')}
             </button>
           </div>
         </div>
@@ -84,7 +86,7 @@ export default function LoginPage() {
       <div className="text-center space-y-4">
         <Spinner size="lg" />
         <p className="text-lg text-base-content/70">
-          {isCallback ? 'Completing login...' : 'Redirecting to login...'}
+          {isCallback ? t('login.completing') : t('login.redirecting')}
         </p>
       </div>
     </div>

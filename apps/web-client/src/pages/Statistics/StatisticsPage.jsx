@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import Layout from '../../components/layout/Layout';
 import Spinner from '../../components/ui/Spinner';
 import { statsApi } from '../../services/api';
+import useT from '../../hooks/useT';
 
 function getDefaultStart() {
   const d = new Date();
@@ -22,6 +23,7 @@ function fmtNum(n) {
 }
 
 export default function StatisticsPage() {
+  const t = useT();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [stats, setStats] = useState(null);
@@ -81,9 +83,9 @@ export default function StatisticsPage() {
       <div className="p-6 max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold">Token Usage Statistics</h1>
+          <h1 className="text-2xl font-bold">{t('stats.title')}</h1>
           <p className="text-base-content/60">
-            Aggregated token consumption by user and API key
+            {t('stats.desc')}
           </p>
         </div>
 
@@ -93,7 +95,7 @@ export default function StatisticsPage() {
             <div className="flex flex-wrap items-end gap-4">
               <div className="form-control">
                 <label className="label pb-1">
-                  <span className="label-text text-xs font-semibold">Start Date</span>
+                  <span className="label-text text-xs font-semibold">{t('stats.startDate')}</span>
                 </label>
                 <input
                   type="date"
@@ -105,7 +107,7 @@ export default function StatisticsPage() {
               </div>
               <div className="form-control">
                 <label className="label pb-1">
-                  <span className="label-text text-xs font-semibold">End Date</span>
+                  <span className="label-text text-xs font-semibold">{t('stats.endDate')}</span>
                 </label>
                 <input
                   type="date"
@@ -118,12 +120,12 @@ export default function StatisticsPage() {
               </div>
               <div className="form-control flex-1 min-w-[200px]">
                 <label className="label pb-1">
-                  <span className="label-text text-xs font-semibold">Search Users</span>
+                  <span className="label-text text-xs font-semibold">{t('stats.searchUsers')}</span>
                 </label>
                 <input
                   type="text"
                   className="input input-bordered input-sm"
-                  placeholder="Filter by username or email..."
+                  placeholder={t('stats.searchPlaceholder')}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -137,13 +139,13 @@ export default function StatisticsPage() {
                   onClick={fetchStats}
                   disabled={isDateInvalid || loading}
                 >
-                  {loading ? 'Loading...' : 'Refresh'}
+                  {loading ? t('stats.loading') : t('stats.refresh')}
                 </button>
               </div>
             </div>
             {isDateInvalid && (
               <p className="text-error text-xs mt-2">
-                Start date must be on or before end date.
+                {t('stats.dateError')}
               </p>
             )}
           </div>
@@ -160,7 +162,7 @@ export default function StatisticsPage() {
           <div className="alert alert-error">
             <span>{error}</span>
             <button className="btn btn-sm btn-ghost" onClick={fetchStats}>
-              Retry
+              {t('stats.retry')}
             </button>
           </div>
         )}
@@ -168,8 +170,8 @@ export default function StatisticsPage() {
         {!loading && !error && stats && filteredUsers.length === 0 && (
           <div className="text-center py-16 text-base-content/50">
             {stats.users.length === 0
-              ? 'No usage data found for this period.'
-              : 'No users match your search.'}
+              ? t('stats.noData')
+              : t('stats.noMatch')}
           </div>
         )}
 
@@ -178,12 +180,12 @@ export default function StatisticsPage() {
             {/* Grand total banner */}
             <div className="bg-base-200 px-5 py-3 flex items-center justify-between text-sm">
               <span>
-                <span className="font-semibold">{stats.total_users}</span> users
+                <span className="font-semibold">{stats.total_users}</span> {t('stats.users')}
                 &middot;{' '}
                 <span className="font-semibold">
                   {fmtNum(stats.grand_total_tokens)}
                 </span>{' '}
-                total tokens
+                {t('stats.totalTokens')}
               </span>
               <span className="text-base-content/60 text-xs">
                 {stats.start_date} – {stats.end_date}
@@ -195,12 +197,12 @@ export default function StatisticsPage() {
                 <thead>
                   <tr>
                     <th className="w-10"></th>
-                    <th>User</th>
-                    <th className="text-right">Input (Cache Miss)</th>
-                    <th className="text-right">Input (Cache Hit)</th>
-                    <th className="text-right">Output</th>
-                    <th className="text-right">Total</th>
-                    <th className="w-48">% of Total</th>
+                    <th>{t('stats.user')}</th>
+                    <th className="text-right">{t('stats.inputMiss')}</th>
+                    <th className="text-right">{t('stats.inputHit')}</th>
+                    <th className="text-right">{t('stats.output')}</th>
+                    <th className="text-right">{t('stats.total')}</th>
+                    <th className="w-48">{t('stats.percentTotal')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -323,7 +325,7 @@ function UserRow({ user, isExpanded, onToggle }) {
             <tr className="bg-base-200/30 text-base-content/60">
               <td></td>
               <td className="pl-6 text-xs italic">
-                Subtotal (keys)
+                {t('stats.subtotal')}
               </td>
               <td className="text-right font-mono text-sm">
                 {fmtNum(

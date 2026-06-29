@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import useT from '../../hooks/useT';
 
 const FILE_TYPE_ICONS = {
   pdf: '📄',
@@ -24,6 +25,7 @@ function formatSize(bytes) {
 }
 
 export default function MessageBubble({ message }) {
+  const t = useT();
   const isUser = message.role === 'user';
   const isStreaming = message.id?.startsWith('__stream');
 
@@ -49,7 +51,7 @@ export default function MessageBubble({ message }) {
   return (
     <div className={`chat ${isUser ? 'chat-end' : 'chat-start'} mb-4`}>
       <div className="chat-header mb-1 opacity-60 text-xs">
-        {isUser ? 'You' : 'Assistant'}
+        {isUser ? t('chat.you') : t('chat.assistant')}
       </div>
       <div
         className={`chat-bubble max-w-[85%] ${

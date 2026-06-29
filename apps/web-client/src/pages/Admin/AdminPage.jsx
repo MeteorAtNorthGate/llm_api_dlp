@@ -9,8 +9,10 @@ import Button from '../../components/ui/Button';
 import Spinner from '../../components/ui/Spinner';
 import { useKeyStore } from '../../store/keyStore';
 import { chatApi } from '../../services/api';
+import useT from '../../hooks/useT';
 
 export default function AdminPage() {
+  const t = useT();
   const {
     keys,
     isLoading,
@@ -112,33 +114,33 @@ export default function AdminPage() {
       <div className="p-6 max-w-4xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">API Key Management</h1>
+            <h1 className="text-2xl font-bold">{t('keys.title')}</h1>
             <p className="text-base-content/60">
-              Manage your virtual API keys for programmatic access
+              {t('keys.desc')}
             </p>
           </div>
           <label htmlFor="generate-modal" className="btn btn-primary">
-            + Generate Key
+            {t('keys.generate')}
           </label>
         </div>
 
         {/* Usage Overview */}
         <div className="card bg-base-100 shadow-sm border border-base-300">
           <div className="card-body p-4">
-            <h2 className="card-title text-base">Usage Overview</h2>
+            <h2 className="card-title text-base">{t('keys.usageOverview')}</h2>
             <UsageChart keys={keys} />
           </div>
         </div>
 
         {/* Key List */}
         <div>
-          <h2 className="text-lg font-semibold mb-3">Your Keys ({keys.length})</h2>
+          <h2 className="text-lg font-semibold mb-3">{t('keys.yourKeys')} ({keys.length})</h2>
           {isLoading && !keys.length ? (
             <Spinner />
           ) : keys.length === 0 ? (
             <div className="text-center py-12 text-base-content/50">
-              <p className="text-lg">No API keys yet</p>
-              <p className="text-sm mt-1">Generate your first key to get started</p>
+              <p className="text-lg">{t('keys.empty')}</p>
+              <p className="text-sm mt-1">{t('keys.emptyHint')}</p>
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
@@ -154,26 +156,21 @@ export default function AdminPage() {
           )}
         </div>
 
-        {/* Generate Modal */}
-        <Modal title="Generate API Key" open={!showNewKeyModal && false}>
-          {/* This is handled by the label trigger below, but Modal can be used programmatically */}
-        </Modal>
-
         {/* Generate Form Modal (triggered by button) */}
         <input type="checkbox" id="generate-modal" className="modal-toggle" />
         <div className="modal">
           <div className="modal-box max-w-lg">
-            <h3 className="font-bold text-lg mb-4">Generate New API Key</h3>
+            <h3 className="font-bold text-lg mb-4">{t('keys.generateTitle')}</h3>
 
             <div className="space-y-4">
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text">Key Alias (optional)</span>
+                  <span className="label-text">{t('keys.alias')}</span>
                 </label>
                 <input
                   type="text"
                   className="input input-bordered"
-                  placeholder="e.g., My Project Key"
+                  placeholder={t('keys.aliasPlaceholder')}
                   value={form.key_alias}
                   onChange={(e) => setForm((p) => ({ ...p, key_alias: e.target.value }))}
                 />
@@ -181,11 +178,11 @@ export default function AdminPage() {
 
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text">Models (none = all available)</span>
+                  <span className="label-text">{t('keys.models')}</span>
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {availableModels.length === 0 && (
-                    <span className="text-sm text-base-content/50">Loading models...</span>
+                    <span className="text-sm text-base-content/50">{t('keys.loadingModels')}</span>
                   )}
                   {availableModels.map((m) => (
                     <label key={m.value} className="label cursor-pointer gap-2">
@@ -204,7 +201,7 @@ export default function AdminPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="form-control">
                   <label className="label">
-                    <span className="label-text">Max Budget (USD)</span>
+                    <span className="label-text">{t('keys.maxBudget')}</span>
                   </label>
                   <input
                     type="number"
@@ -215,7 +212,7 @@ export default function AdminPage() {
                 </div>
                 <div className="form-control">
                   <label className="label">
-                    <span className="label-text">RPM Limit</span>
+                    <span className="label-text">{t('keys.rpmLimit')}</span>
                   </label>
                   <input
                     type="number"
@@ -228,7 +225,7 @@ export default function AdminPage() {
 
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text">Duration (days)</span>
+                  <span className="label-text">{t('keys.duration')}</span>
                 </label>
                 <input
                   type="range"
@@ -239,7 +236,7 @@ export default function AdminPage() {
                   onChange={(e) => setForm((p) => ({ ...p, duration_days: parseInt(e.target.value) }))}
                 />
                 <div className="text-xs text-base-content/60 text-right">
-                  {form.duration_days} days
+                  {form.duration_days} {t('keys.days')}
                 </div>
               </div>
 
@@ -251,7 +248,7 @@ export default function AdminPage() {
 
               <div className="modal-action">
                 <label htmlFor="generate-modal" className="btn btn-ghost">
-                  Cancel
+                  {t('keys.cancel')}
                 </label>
                 <button
                   className="btn btn-primary"
@@ -259,13 +256,13 @@ export default function AdminPage() {
                   disabled={isGenerating}
                 >
                   {isGenerating && <span className="loading loading-spinner loading-sm" />}
-                  Generate
+                  {t('keys.generateBtn')}
                 </button>
               </div>
             </div>
           </div>
           <label className="modal-backdrop" htmlFor="generate-modal">
-            Close
+            {t('common.close')}
           </label>
         </div>
 
@@ -274,7 +271,7 @@ export default function AdminPage() {
           <Modal
             open={showNewKeyModal}
             onClose={closeNewKeyModal}
-            title="API Key Generated"
+            title={t('keys.generated')}
             size="lg"
           >
             <div className="space-y-5">
@@ -284,14 +281,14 @@ export default function AdminPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
                 <span>
-                  This key will only be shown once. Copy it now and store it securely.
+                  {t('keys.warning')}
                 </span>
               </div>
 
               {/* API Key */}
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text font-bold">Your API Key</span>
+                  <span className="label-text font-bold">{t('keys.yourApiKey')}</span>
                 </label>
                 <div className="join w-full">
                   <input
@@ -304,7 +301,7 @@ export default function AdminPage() {
                     className={`btn join-item ${copied ? 'btn-success' : 'btn-outline'}`}
                     onClick={() => copyToClipboard(newKeyData.api_key)}
                   >
-                    {copied ? 'Copied!' : 'Copy'}
+                    {copied ? t('keys.copied') : t('keys.copy')}
                   </button>
                 </div>
               </div>
@@ -312,12 +309,12 @@ export default function AdminPage() {
               {/* Base URL & Quick Start */}
               {newKeyData.base_url && (
                 <div className="space-y-3">
-                  <div className="divider text-sm text-base-content/50">Usage Guide</div>
+                  <div className="divider text-sm text-base-content/50">{t('keys.usageGuide')}</div>
 
                   {/* Base URL display */}
                   <div className="form-control">
                     <label className="label pb-1">
-                      <span className="label-text font-semibold">Base URL</span>
+                      <span className="label-text font-semibold">{t('keys.baseUrl')}</span>
                     </label>
                     <div className="join w-full">
                       <input
@@ -330,7 +327,7 @@ export default function AdminPage() {
                         className="btn btn-outline join-item"
                         onClick={() => copyToClipboard(newKeyData.base_url)}
                       >
-                        Copy
+                        {t('keys.copy')}
                       </button>
                     </div>
                   </div>
@@ -338,7 +335,7 @@ export default function AdminPage() {
                   {/* OpenAI SDK example */}
                   <div className="bg-base-200 rounded-lg p-3 space-y-2">
                     <span className="text-xs font-semibold uppercase text-base-content/50">
-                      OpenAI SDK / OpenAI 兼容客户端
+                      {t('keys.openaiSdk')}
                     </span>
                     <pre className="text-xs overflow-x-auto">
                       <code>{`from openai import OpenAI
@@ -363,7 +360,7 @@ response = client.chat.completions.create(
                   {/* Anthropic SDK example */}
                   <div className="bg-base-200 rounded-lg p-3 space-y-2">
                     <span className="text-xs font-semibold uppercase text-base-content/50">
-                      Anthropic SDK
+                      {t('keys.anthropicSdk')}
                     </span>
                     <pre className="text-xs overflow-x-auto">
                       <code>{`# 环境变量方式
@@ -382,7 +379,7 @@ client = anthropic.Anthropic(
                   {/* curl example */}
                   <div className="bg-base-200 rounded-lg p-3 space-y-2">
                     <span className="text-xs font-semibold uppercase text-base-content/50">
-                      curl 快速测试
+                      {t('keys.curlTest')}
                     </span>
                     <pre className="text-xs overflow-x-auto">
                       <code>{`curl -X POST "${newKeyData.base_url}/v1/chat/completions" \\
@@ -396,18 +393,18 @@ client = anthropic.Anthropic(
 
               {/* Key metadata */}
               <div className="text-sm text-base-content/60 space-y-1">
-                <div className="divider text-sm text-base-content/50 mb-1">Key Details</div>
+                <div className="divider text-sm text-base-content/50 mb-1">{t('keys.keyDetails')}</div>
                 <p>
-                  <strong>Key Suffix:</strong> {newKeyData.key_suffix}
+                  <strong>{t('keys.keySuffix')}:</strong> {newKeyData.key_suffix}
                 </p>
                 {newKeyData.models.length > 0 && (
                   <p>
-                    <strong>Models:</strong> {newKeyData.models.join(', ')}
+                    <strong>{t('keys.models_label')}:</strong> {newKeyData.models.join(', ')}
                   </p>
                 )}
                 {newKeyData.expires_at && (
                   <p>
-                    <strong>Expires:</strong>{' '}
+                    <strong>{t('keys.expires')}:</strong>{' '}
                     {new Date(newKeyData.expires_at).toLocaleDateString()}
                   </p>
                 )}
@@ -418,7 +415,7 @@ client = anthropic.Anthropic(
                   className="btn btn-primary"
                   onClick={closeNewKeyModal}
                 >
-                  I've Saved My Key
+                  {t('keys.saved')}
                 </button>
               </div>
             </div>
@@ -429,7 +426,7 @@ client = anthropic.Anthropic(
         <Modal
           open={!!pendingDeleteId}
           onClose={() => setPendingDeleteId(null)}
-          title="Confirm Delete"
+          title={t('keys.confirmDelete')}
         >
           <div className="space-y-4">
             <div className="alert alert-warning">
@@ -438,26 +435,24 @@ client = anthropic.Anthropic(
               </svg>
               <div>
                 <p className="font-bold">
-                  Delete active key sk-...{pendingKey?.key_suffix}?
+                  {t('keys.deleteWarning', { suffix: pendingKey?.key_suffix })}
                 </p>
                 <p className="text-sm">
-                  This key is currently <strong>active</strong>. Deleting it will permanently
-                  remove it from both LiteLLM and the local database. The key will stop working
-                  immediately for anyone using it.
+                  {t('keys.deleteWarningDesc')}
                 </p>
                 {pendingKey?.key_alias && (
                   <p className="text-sm mt-1">
-                    Alias: <strong>{pendingKey.key_alias}</strong>
+                    {t('keys.alias_label')}: <strong>{pendingKey.key_alias}</strong>
                   </p>
                 )}
               </div>
             </div>
             <div className="modal-action">
               <button className="btn btn-ghost" onClick={() => setPendingDeleteId(null)}>
-                Cancel
+                {t('keys.cancel')}
               </button>
               <button className="btn btn-error" onClick={confirmDelete}>
-                Yes, Delete Permanently
+                {t('keys.yesDelete')}
               </button>
             </div>
           </div>
