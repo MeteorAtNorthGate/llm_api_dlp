@@ -1,6 +1,6 @@
 /** ChatPage — main chat interface with message list and input. */
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import Layout from '../../components/layout/Layout';
 import MessageBubble from '../../components/chat/MessageBubble';
 import ChatInput from '../../components/chat/ChatInput';
@@ -24,10 +24,20 @@ export default function ChatPage() {
     setSelectedModel,
     setReasoningEffort,
     newConversation,
+    editAndResend,
   } = useChatStore();
   const messagesEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
   const isNearBottomRef = useRef(true);
+  const [editingContent, setEditingContent] = useState(null);
+
+  // Index of the last user message (for edit button visibility)
+  const lastUserIdx = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') return i;
+    }
+    return -1;
+  }, [messages]);
 
   // Load models on mount
   useEffect(() => {
@@ -68,7 +78,20 @@ export default function ChatPage() {
   }, [messages, streamContent]);
 
   const handleSend = (content, files) => {
-    sendMessage(content, files);
+    if (editingContent) {
+      editAndResend(content, files);
+      setEditingContent(null);
+    } else {
+      sendMessage(content, files);
+    }
+  };
+
+  const handleEdit = (messageContent) => {
+    setEditingContent(messageContent);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingContent(null);
   };
 
   return (
@@ -92,7 +115,12 @@ export default function ChatPage() {
           )}
 
           {messages.map((msg, idx) => (
-            <MessageBubble key={msg.id || idx} message={msg} />
+            <MessageBubble
+              key={msg.id || idx}
+              message={msg}
+              editable={!isStreaming && msg.role === 'user' && idx === lastUserIdx}
+              onEdit={() => handleEdit(msg.content)}
+            />
           ))}
 
           {/* Streaming message */}
@@ -130,7 +158,21 @@ export default function ChatPage() {
           reasoningEffort={reasoningEffort}
           onReasoningEffortChange={setReasoningEffort}
           hasActiveConversation={!!activeConversationId}
+          defaultValue={editingContent || ''}
         />
+        {editingContent && (
+          <div className="flex items-center justify-center pb-2">
+            <span className="text-xs text-warning flex items-center gap-1">
+              ✎ {t('chat.editing')}
+              <button
+                className="btn btn-ghost btn-xs text-base-content/40 hover:text-error ml-1"
+                onClick={handleCancelEdit}
+              >
+                {t('common.cancel')}
+              </button>
+            </span>
+          </div>
+        )}
       </div>
     </Layout>
   );

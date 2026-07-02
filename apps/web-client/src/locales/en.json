@@ -34,6 +34,8 @@
   "chat.newChat": "+ New Chat",
   "chat.noConversations": "No conversations yet",
   "chat.msgs": "msgs",
+  "chat.editMessage": "Edit this message",
+  "chat.editing": "Editing message...",
 
   "login.completing": "Completing login...",
   "login.redirecting": "Redirecting to login...",

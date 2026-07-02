@@ -612,6 +612,63 @@ async def get_conversation(
     )
 
 
+@router.post("/conversations/{conversation_id}/prune-last-turn")
+async def prune_last_turn(
+    conversation_id: str,
+    user_claims: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Delete the last user message and all subsequent messages.
+
+    Used by the frontend when a user edits and resends their last message,
+    so the DB state stays in sync with the truncated client-side history.
+    """
+    user = await _get_or_create_user(session, user_claims)
+
+    result = await session.execute(
+        select(Conversation).where(
+            Conversation.id == uuid.UUID(conversation_id),
+            Conversation.user_id == user.id,
+        )
+    )
+    conversation = result.scalar_one_or_none()
+    if conversation is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found",
+        )
+
+    # Find the last user message in this conversation.
+    last_user_result = await session.execute(
+        select(Message)
+        .where(
+            Message.conversation_id == conversation.id,
+            Message.role == "user",
+        )
+        .order_by(Message.created_at.desc())
+        .limit(1)
+    )
+    last_user_msg = last_user_result.scalar_one_or_none()
+
+    if last_user_msg is None:
+        return {"pruned": 0}
+
+    # Delete that message and everything created after it (assistant replies).
+    prune_result = await session.execute(
+        select(Message).where(
+            Message.conversation_id == conversation.id,
+            Message.created_at >= last_user_msg.created_at,
+        )
+    )
+    pruned_count = 0
+    for msg in prune_result.scalars().all():
+        await session.delete(msg)
+        pruned_count += 1
+
+    await session.commit()
+    return {"pruned": pruned_count}
+
+
 @router.delete("/conversations/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_conversation(
     conversation_id: str,

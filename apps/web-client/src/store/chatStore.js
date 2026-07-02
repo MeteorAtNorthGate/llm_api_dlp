@@ -287,6 +287,38 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
+  // Edit the last user message: prune the last turn from the DB,
+  // truncate client-side messages, then resend with the edited content.
+  editAndResend: async (editedContent, files = []) => {
+    const { messages, activeConversationId } = get();
+    if (!activeConversationId) return;
+
+    // Find the last user message index
+    let lastUserIdx = -1;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') {
+        lastUserIdx = i;
+        break;
+      }
+    }
+    if (lastUserIdx === -1) return;
+
+    // Prune the last turn on the backend first
+    try {
+      await chatApi.pruneLastTurn(activeConversationId);
+    } catch (err) {
+      console.error('Failed to prune last turn', err);
+      // Continue anyway — the send will still work client-side
+    }
+
+    // Truncate client-side messages to before the last user message
+    const truncatedMessages = messages.slice(0, lastUserIdx);
+    set({ messages: truncatedMessages });
+
+    // Send with the edited content
+    await get().sendMessage(editedContent, files);
+  },
+
   deleteConversation: async (id) => {
     try {
       await chatApi.deleteConversation(id);

@@ -1,6 +1,6 @@
 /** ChatInput — text input area with file upload and model selector. */
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import useT from '../../hooks/useT';
 
@@ -84,12 +84,28 @@ export default function ChatInput({
   reasoningEffort = '',
   onReasoningEffortChange = () => {},
   hasActiveConversation = false,
+  defaultValue = '',
 }) {
   const t = useT();
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState(defaultValue);
   const [files, setFiles] = useState([]);
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null); // Fallback <input> when showOpenFilePicker unavailable
+
+  // Sync defaultValue when it changes (e.g. editing a message)
+  useEffect(() => {
+    if (defaultValue) {
+      setInput(defaultValue);
+      // Focus and resize after the value is set
+      requestAnimationFrame(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          textareaRef.current.style.height = 'auto';
+          textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
+        }
+      });
+    }
+  }, [defaultValue]);
 
   // Auto-resize textarea
   const resizeTextarea = useCallback(() => {

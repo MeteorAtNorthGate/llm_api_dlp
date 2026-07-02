@@ -27,7 +27,7 @@ function formatSize(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
 }
 
-export default function MessageBubble({ message }) {
+export default function MessageBubble({ message, editable = false, onEdit }) {
   const t = useT();
   const isUser = message.role === 'user';
   const isStreaming = message.id?.startsWith('__stream');
@@ -56,8 +56,20 @@ export default function MessageBubble({ message }) {
 
   return (
     <div className={`chat ${isUser ? 'chat-end' : 'chat-start'} mb-4`}>
-      <div className="chat-header mb-1 opacity-60 text-xs">
-        {isUser ? t('chat.you') : t('chat.assistant')}
+      <div className="chat-header mb-1 opacity-60 text-xs flex items-center gap-2">
+        <span>{isUser ? t('chat.you') : t('chat.assistant')}</span>
+        {editable && onEdit && (
+          <button
+            className="btn btn-ghost btn-xs opacity-50 hover:opacity-100"
+            onClick={onEdit}
+            title={t('chat.editMessage')}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+              <path d="m15 5 4 4" />
+            </svg>
+          </button>
+        )}
       </div>
       <div
         className={`chat-bubble max-w-[85%] ${

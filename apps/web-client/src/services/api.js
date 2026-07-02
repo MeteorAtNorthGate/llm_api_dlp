@@ -61,6 +61,9 @@ export const chatApi = {
 
   deleteConversation: (id) =>
     api.delete(`chat/conversations/${id}`),
+
+  pruneLastTurn: (id) =>
+    api.post(`chat/conversations/${id}/prune-last-turn`).json(),
 };
 
 // ── API Keys ──────────────────────────────────────────
