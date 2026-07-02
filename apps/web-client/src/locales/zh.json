@@ -35,7 +35,8 @@
   "chat.noConversations": "暂无对话",
   "chat.msgs": "条消息",
   "chat.editMessage": "编辑此消息",
-  "chat.editing": "正在编辑消息...",
+  "chat.editSend": "发送",
+  "chat.editNewline": "换行",
 
   "login.completing": "正在完成登录...",
   "login.redirecting": "正在跳转到登录页...",

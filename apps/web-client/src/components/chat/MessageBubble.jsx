@@ -1,6 +1,6 @@
 /** MessageBubble — renders a single chat message with markdown and file attachments. */
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -27,7 +27,7 @@ function formatSize(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
 }
 
-export default function MessageBubble({ message, editable = false, onEdit }) {
+export default function MessageBubble({ message, editable = false, onEditResend }) {
   const t = useT();
   const isUser = message.role === 'user';
   const isStreaming = message.id?.startsWith('__stream');
@@ -54,22 +54,59 @@ export default function MessageBubble({ message, editable = false, onEdit }) {
   const [showThinking, setShowThinking] = useState(false);
   const hasReasoning = !isUser && !!message.reasoning_content;
 
+  // ── In-place editing state ──
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState('');
+  const editTextareaRef = useRef(null);
+
+  const handleStartEdit = useCallback(() => {
+    setEditText(message.content || '');
+    setIsEditing(true);
+  }, [message.content]);
+
+  const handleCancelEdit = useCallback(() => {
+    setIsEditing(false);
+    setEditText('');
+  }, []);
+
+  const handleSubmitEdit = useCallback(() => {
+    const trimmed = editText.trim();
+    if (!trimmed) return;
+    setIsEditing(false);
+    setEditText('');
+    onEditResend?.(trimmed);
+  }, [editText, onEditResend]);
+
+  // Auto-resize and focus the edit textarea
+  useEffect(() => {
+    if (isEditing && editTextareaRef.current) {
+      const ta = editTextareaRef.current;
+      ta.focus();
+      ta.style.height = 'auto';
+      ta.style.height = `${Math.min(ta.scrollHeight, 300)}px`;
+    }
+  }, [isEditing]);
+
+  const handleEditKeyDown = useCallback((e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmitEdit();
+    }
+  }, [handleSubmitEdit]);
+
+  const handleEditInput = useCallback((e) => {
+    setEditText(e.target.value);
+    const ta = editTextareaRef.current;
+    if (ta) {
+      ta.style.height = 'auto';
+      ta.style.height = `${Math.min(ta.scrollHeight, 300)}px`;
+    }
+  }, []);
+
   return (
     <div className={`chat ${isUser ? 'chat-end' : 'chat-start'} mb-4`}>
-      <div className="chat-header mb-1 opacity-60 text-xs flex items-center gap-2">
-        <span>{isUser ? t('chat.you') : t('chat.assistant')}</span>
-        {editable && onEdit && (
-          <button
-            className="btn btn-ghost btn-xs opacity-50 hover:opacity-100"
-            onClick={onEdit}
-            title={t('chat.editMessage')}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-              <path d="m15 5 4 4" />
-            </svg>
-          </button>
-        )}
+      <div className="chat-header mb-1 opacity-60 text-xs">
+        {isUser ? t('chat.you') : t('chat.assistant')}
       </div>
       <div
         className={`chat-bubble max-w-[85%] ${
@@ -122,7 +159,37 @@ export default function MessageBubble({ message, editable = false, onEdit }) {
         )}
 
         {/* Message content */}
-        {isUser ? (
+        {isUser && isEditing ? (
+          <div className="flex flex-col gap-2">
+            <textarea
+              ref={editTextareaRef}
+              className="textarea textarea-ghost w-full min-h-[44px] max-h-[300px] resize-none bg-base-100/20 text-base-content"
+              value={editText}
+              onChange={handleEditInput}
+              onKeyDown={handleEditKeyDown}
+              rows={1}
+              disabled={!editable}
+            />
+            <div className="flex items-center justify-end gap-1">
+              <span className="text-xs opacity-50 mr-auto">
+                Shift+Enter {t('chat.editNewline')}
+              </span>
+              <button
+                className="btn btn-ghost btn-xs"
+                onClick={handleCancelEdit}
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                className="btn btn-primary btn-xs"
+                onClick={handleSubmitEdit}
+                disabled={!editText.trim()}
+              >
+                {t('chat.editSend')}
+              </button>
+            </div>
+          </div>
+        ) : isUser ? (
           <p className="whitespace-pre-wrap">{content}</p>
         ) : (
           <div className="prose max-w-none text-neutral-content">
@@ -135,6 +202,22 @@ export default function MessageBubble({ message, editable = false, onEdit }) {
           </div>
         )}
       </div>
+
+      {/* Edit button — below the bubble for editable user messages */}
+      {editable && !isEditing && (
+        <div className="chat-footer mt-1 opacity-0 hover:opacity-100 transition-opacity">
+          <button
+            className="btn btn-ghost btn-xs"
+            onClick={handleStartEdit}
+            title={t('chat.editMessage')}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+              <path d="m15 5 4 4" />
+            </svg>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
