@@ -9,7 +9,7 @@ export default function Layout({ children, showSidebar = true }) {
       <Header />
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {showSidebar && <Sidebar />}
-        <main className="flex-1 h-full min-w-0 flex flex-col overflow-hidden">{children}</main>
+        <main className="flex-1 h-full min-w-0 flex flex-col overflow-clip">{children}</main>
       </div>
     </div>
   );
