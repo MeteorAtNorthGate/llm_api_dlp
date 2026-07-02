@@ -258,7 +258,7 @@ export default function SystemAdminPage() {
 
   return (
     <Layout showSidebar={false}>
-      <div className="p-6 max-w-5xl mx-auto space-y-6">
+      <div className="p-6 max-w-5xl mx-auto space-y-6 h-full overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>

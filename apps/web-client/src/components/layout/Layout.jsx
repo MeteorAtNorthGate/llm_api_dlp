@@ -7,9 +7,9 @@ export default function Layout({ children, showSidebar = true }) {
   return (
     <div className="flex flex-col h-screen">
       <Header />
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         {showSidebar && <Sidebar />}
-        <main className="flex-1 overflow-y-auto">{children}</main>
+        <main className="flex-1 h-full min-w-0 flex flex-col overflow-hidden">{children}</main>
       </div>
     </div>
   );

@@ -86,7 +86,7 @@ export default function ChatPage() {
 
   return (
     <Layout>
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col flex-1 min-h-0">
         {/* Messages area */}
         <div
           className="flex-1 overflow-y-auto px-4 py-6"

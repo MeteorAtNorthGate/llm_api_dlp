@@ -105,7 +105,7 @@ export default function UsagePage() {
 
   return (
     <Layout showSidebar={false}>
-      <div className="p-6 max-w-5xl mx-auto space-y-6">
+      <div className="p-6 max-w-5xl mx-auto space-y-6 h-full overflow-y-auto">
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold">
