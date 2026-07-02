@@ -3,6 +3,9 @@
 import { useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import rehypeHighlight from 'rehype-highlight';
 import useT from '../../hooks/useT';
 
 const FILE_TYPE_ICONS = {
@@ -109,8 +112,11 @@ export default function MessageBubble({ message }) {
         {isUser ? (
           <p className="whitespace-pre-wrap">{content}</p>
         ) : (
-          <div className="prose prose-sm max-w-none text-neutral-content">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          <div className="prose max-w-none text-neutral-content">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm, remarkMath]}
+              rehypePlugins={[rehypeKatex, rehypeHighlight]}
+            >
               {content}
             </ReactMarkdown>
           </div>

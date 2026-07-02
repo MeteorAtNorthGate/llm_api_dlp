@@ -34,3 +34,66 @@
   --tw-prose-th-borders: oklch(var(--nc) / 0.3);
   --tw-prose-td-borders: oklch(var(--nc) / 0.3);
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   KaTeX math — override implicit black on neutral chat bubbles.
+   Without this, math renders invisible on dark neutral backgrounds.
+   ═══════════════════════════════════════════════════════════════════ */
+.chat-bubble-neutral .katex { color: oklch(var(--nc)); }
+.chat-bubble-neutral .katex .mathnormal,
+.chat-bubble-neutral .katex .mord,
+.chat-bubble-neutral .katex .mbin,
+.chat-bubble-neutral .katex .mrel,
+.chat-bubble-neutral .katex .mopen,
+.chat-bubble-neutral .katex .mclose,
+.chat-bubble-neutral .katex .mpunct,
+.chat-bubble-neutral .katex .minner,
+.chat-bubble-neutral .katex .mord.text { color: oklch(var(--nc)); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Syntax highlighting — uses DaisyUI theme tokens so colours
+   automatically adapt to both light (llm) and dark (llmDark) themes.
+   Powered by rehype-highlight (hljs class names).
+   ═══════════════════════════════════════════════════════════════════ */
+.chat-bubble-neutral .hljs-keyword,
+.chat-bubble-neutral .hljs-selector-tag,
+.chat-bubble-neutral .hljs-title,
+.chat-bubble-neutral .hljs-section,
+.chat-bubble-neutral .hljs-name,
+.chat-bubble-neutral .hljs-doctag { color: oklch(var(--p)); }
+
+.chat-bubble-neutral .hljs-string,
+.chat-bubble-neutral .hljs-selector-id,
+.chat-bubble-neutral .hljs-template-variable { color: oklch(var(--s)); }
+
+.chat-bubble-neutral .hljs-comment,
+.chat-bubble-neutral .hljs-meta { color: oklch(var(--bc) / 0.5); }
+
+.chat-bubble-neutral .hljs-number,
+.chat-bubble-neutral .hljs-literal,
+.chat-bubble-neutral .hljs-attr { color: oklch(var(--a)); }
+
+.chat-bubble-neutral .hljs-built_in { color: oklch(var(--in)); }
+
+.chat-bubble-neutral .hljs-deletion { color: oklch(var(--er)); }
+.chat-bubble-neutral .hljs-addition { color: oklch(var(--su)); }
+
+.chat-bubble-neutral .hljs-type,
+.chat-bubble-neutral .hljs-variable { color: oklch(var(--wa)); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Code block polish
+   ═══════════════════════════════════════════════════════════════════ */
+.chat-bubble-neutral .prose pre {
+  margin: 0.5rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+}
+
+.chat-bubble-neutral .prose :not(pre) > code {
+  background: oklch(var(--n) / 0.12);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-weight: 500;
+}
