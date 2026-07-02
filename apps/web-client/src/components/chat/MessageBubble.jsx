@@ -7,6 +7,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeHighlight from 'rehype-highlight';
 import useT from '../../hooks/useT';
+import { normalizeLatexDelimiters } from '../../utils/latex';
 
 const FILE_TYPE_ICONS = {
   pdf: '📄',
@@ -33,7 +34,7 @@ export default function MessageBubble({ message }) {
 
   const content = useMemo(() => {
     if (typeof message.content !== 'string') return '';
-    return message.content;
+    return normalizeLatexDelimiters(message.content);
   }, [message.content]);
 
   const attachments = message.attachments || [];
