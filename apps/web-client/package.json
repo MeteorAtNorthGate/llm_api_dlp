@@ -2,6 +2,9 @@
   "name": "llm-dlp-web",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=24.12.0 <25"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -11,7 +14,6 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.60.0",
-    "daisyui": "^4.12.0",
     "ky": "^1.7.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -27,9 +29,11 @@
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.0",
+    "@testing-library/dom": "^10.0.0",
     "@testing-library/react": "^16.0.0",
     "@vitejs/plugin-react": "^4.4.0",
     "autoprefixer": "^10.4.0",
+    "daisyui": "^4.12.0",
     "eslint": "^9.0.0",
     "eslint-plugin-react-hooks": "^5.0.0",
     "jsdom": "^25.0.0",
