@@ -19,14 +19,12 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "messages",
-        sa.Column(
-            "reasoning_content",
-            sa.Text,
-            nullable=True,
-            server_default=None,
-        ),
+    # Use IF NOT EXISTS to make the migration idempotent —
+    # the column may already exist if the model change was deployed
+    # before the migration was run, or if the migration was applied
+    # manually on a previous deploy.
+    op.execute(
+        "ALTER TABLE messages ADD COLUMN IF NOT EXISTS reasoning_content TEXT"
     )
 
 

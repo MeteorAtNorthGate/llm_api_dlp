@@ -138,12 +138,10 @@ async def _seed_with_retry(max_retries: int = 30, interval: int = 2) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan — startup and shutdown events."""
-    # Startup: create tables if they don't exist (dev convenience)
+    # Schema migrations are handled by Alembic at container startup
+    # (see Dockerfile CMD). Do NOT call create_all here — it bypasses
+    # Alembic's version tracking and causes DuplicateColumnError on deploy.
     from app.db.session import engine
-    from app.db.base import Base
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
 
     # Seed default model into LiteLLM DB (non-blocking — runs in background)
     seed_task = asyncio.create_task(_seed_with_retry())
