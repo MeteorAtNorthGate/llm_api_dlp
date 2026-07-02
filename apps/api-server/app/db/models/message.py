@@ -31,6 +31,11 @@ class Message(Base):
         JSONB, nullable=True, default=None
     )
 
+    # DeepSeek / provider chain-of-thought reasoning content
+    reasoning_content: Mapped[str | None] = mapped_column(
+        Text, nullable=True, default=None
+    )
+
     # Token usage tracking (for DLP verification — masked vs unmasked should match)
     token_count: Mapped[int | None] = mapped_column(nullable=True)
     model: Mapped[str | None] = mapped_column(String(128), nullable=True)

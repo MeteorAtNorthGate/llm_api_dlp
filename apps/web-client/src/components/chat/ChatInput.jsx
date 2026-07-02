@@ -250,7 +250,6 @@ export default function ChatInput({
               <option value="">{t('chat.thinking.auto')}</option>
               <option value="none">{t('chat.thinking.none')}</option>
               <option value="low">{t('chat.thinking.low')}</option>
-              <option value="medium">{t('chat.thinking.medium')}</option>
               <option value="high">{t('chat.thinking.high')}</option>
               <option value="max">{t('chat.thinking.max')}</option>
             </select>

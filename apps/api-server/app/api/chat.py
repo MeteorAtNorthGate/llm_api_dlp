@@ -72,6 +72,37 @@ async def list_available_models(
     return {"models": models}
 
 
+def _apply_reasoning_params(
+    payload: dict, model: str, reasoning_effort: str
+) -> None:
+    """Apply reasoning/thinking parameters to the LiteLLM payload.
+
+    DeepSeek expects ``thinking: {type, reasoning_effort}`` while OpenAI
+    uses ``reasoning.effort`` and GLM uses ``thinking+reasoning_effort``.
+    This helper writes the provider-canonical format so LiteLLM can
+    translate correctly, rather than relying on LiteLLM to guess from a
+    top-level ``reasoning_effort`` key.
+    """
+    normalized = reasoning_effort.strip().lower()
+
+    if not normalized:
+        return  # let provider default
+
+    # Detect DeepSeek models (name starts with "deepseek")
+    if model.startswith("deepseek"):
+        if normalized == "none":
+            payload["thinking"] = {"type": "disabled"}
+        else:
+            payload["thinking"] = {
+                "type": "enabled",
+                "reasoning_effort": normalized,
+            }
+    else:
+        # OpenAI / GLM / other providers — pass through
+        # LiteLLM handles translation to provider-specific format for these
+        payload["reasoning_effort"] = normalized
+
+
 async def _get_or_create_user(
     session: AsyncSession, user_claims: dict
 ) -> User:
@@ -241,7 +272,7 @@ async def chat_completions(
     if body.max_tokens:
         litellm_payload["max_tokens"] = body.max_tokens
     if body.reasoning_effort:
-        litellm_payload["reasoning_effort"] = body.reasoning_effort
+        _apply_reasoning_params(litellm_payload, body.model, body.reasoning_effort)
 
     if body.stream:
         return StreamingResponse(
@@ -283,7 +314,8 @@ async def chat_completions(
             assistant_msg = Message(
                 conversation_id=conversation.id,
                 role="assistant",
-                content=choice["message"]["content"],
+                content=choice["message"]["content"] or "",
+                reasoning_content=choice["message"].get("reasoning_content"),
                 token_count=data.get("usage", {}).get("total_tokens"),
                 model=data.get("model"),
             )
@@ -328,6 +360,7 @@ async def _stream_response(
 ) -> AsyncGenerator[str, None]:
     """Stream SSE events from LiteLLM back to the frontend."""
     full_content = ""
+    full_reasoning = ""
     token_count = None
     model_name = None
 
@@ -357,8 +390,12 @@ async def _stream_response(
                         try:
                             chunk = json.loads(data_str)
                             choices = chunk.get("choices", [])
-                            if choices and choices[0].get("delta", {}).get("content"):
-                                full_content += choices[0]["delta"]["content"]
+                            if choices:
+                                delta = choices[0].get("delta", {})
+                                if delta.get("content"):
+                                    full_content += delta["content"]
+                                if delta.get("reasoning_content"):
+                                    full_reasoning += delta["reasoning_content"]
 
                             # Capture usage/token info from final chunk
                             if chunk.get("usage"):
@@ -379,12 +416,13 @@ async def _stream_response(
 
     finally:
         # Save assistant message to DB
-        if full_content:
+        if full_content or full_reasoning:
             try:
                 assistant_msg = Message(
                     conversation_id=conversation_id,
                     role="assistant",
                     content=full_content,
+                    reasoning_content=full_reasoning or None,
                     token_count=token_count,
                     model=model_name,
                 )
@@ -558,6 +596,7 @@ async def get_conversation(
                 role=m.role,
                 content=m.content,
                 content_parts=m.content_parts,
+                reasoning_content=m.reasoning_content,
                 attachments=[
                     AttachmentDetail.model_validate(att)
                     for att in attachments_by_message.get(m.id, [])

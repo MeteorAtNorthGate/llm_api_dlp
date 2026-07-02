@@ -13,6 +13,7 @@ export default function ChatPage() {
     messages,
     isStreaming,
     streamContent,
+    streamReasoningContent,
     availableModels,
     selectedModel,
     reasoningEffort,
@@ -69,11 +70,12 @@ export default function ChatPage() {
           ))}
 
           {/* Streaming message */}
-          {isStreaming && streamContent && (
+          {isStreaming && (streamContent || streamReasoningContent) && (
             <MessageBubble
               message={{
                 role: 'assistant',
                 content: streamContent,
+                reasoning_content: streamReasoningContent,
                 id: '__stream',
               }}
             />

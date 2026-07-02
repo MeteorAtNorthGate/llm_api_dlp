@@ -10,6 +10,7 @@ export const useChatStore = create((set, get) => ({
   isStreaming: false,
   isUploading: false,
   streamContent: '',
+  streamReasoningContent: '',
   abortController: null,  // AbortController for cancelling in-flight stream
   availableModels: [],
   selectedModel: 'deepseek-v4-flash',
@@ -37,21 +38,23 @@ export const useChatStore = create((set, get) => ({
 
   // Cancel the in-flight streaming request and save partial content.
   stopStreaming: () => {
-    const { abortController, streamContent } = get();
+    const { abortController, streamContent, streamReasoningContent } = get();
     if (abortController) {
       abortController.abort();
     }
     // Save whatever content has been streamed so far as an assistant message.
-    if (streamContent) {
+    if (streamContent || streamReasoningContent) {
       const assistantMsg = {
         role: 'assistant',
         content: streamContent,
+        reasoning_content: streamReasoningContent || undefined,
         id: Date.now().toString(),
       };
       set((state) => ({
         messages: [...state.messages, assistantMsg],
         isStreaming: false,
         streamContent: '',
+        streamReasoningContent: '',
         abortController: null,
         isUploading: false,
       }));
@@ -59,6 +62,7 @@ export const useChatStore = create((set, get) => ({
       set({
         isStreaming: false,
         streamContent: '',
+        streamReasoningContent: '',
         abortController: null,
         isUploading: false,
       });
@@ -79,9 +83,10 @@ export const useChatStore = create((set, get) => ({
   loadConversation: async (id) => {
     try {
       const conv = await chatApi.getConversation(id);
-      // Map API response to include attachments field
+      // Map API response to include attachments and reasoning_content fields
       const messages = (conv.messages || []).map((m) => ({
         ...m,
+        reasoning_content: m.reasoning_content || '',
         attachments: m.attachments || [],
       }));
       set({ messages, activeConversationId: id });
@@ -106,6 +111,7 @@ export const useChatStore = create((set, get) => ({
         activeConversationId: conv.id,
         messages: [],
         streamContent: '',
+        streamReasoningContent: '',
         isStreaming: false,
         isUploading: false,
         abortController: null,
@@ -120,6 +126,7 @@ export const useChatStore = create((set, get) => ({
         activeConversationId: null,
         messages: [],
         streamContent: '',
+        streamReasoningContent: '',
         isStreaming: false,
         isUploading: false,
         abortController: null,
@@ -172,7 +179,7 @@ export const useChatStore = create((set, get) => ({
     };
     const updatedMessages = [...messages, userMsg];
     const controller = new AbortController();
-    set({ messages: updatedMessages, isStreaming: true, streamContent: '', abortController: controller });
+    set({ messages: updatedMessages, isStreaming: true, streamContent: '', streamReasoningContent: '', abortController: controller });
 
     try {
       const payload = {
@@ -201,6 +208,7 @@ export const useChatStore = create((set, get) => ({
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let fullContent = '';
+      let fullReasoning = '';
       let buffer = '';
 
       while (true) {
@@ -218,11 +226,17 @@ export const useChatStore = create((set, get) => ({
 
             try {
               const parsed = JSON.parse(data);
-              const delta = parsed.choices?.[0]?.delta?.content;
-              if (delta) {
-                fullContent += delta;
-                set({ streamContent: fullContent });
+              const delta = parsed.choices?.[0]?.delta;
+              if (delta?.content) {
+                fullContent += delta.content;
               }
+              if (delta?.reasoning_content) {
+                fullReasoning += delta.reasoning_content;
+              }
+              set({
+                streamContent: fullContent,
+                streamReasoningContent: fullReasoning,
+              });
             } catch {
               // Skip malformed chunks
             }
@@ -234,6 +248,7 @@ export const useChatStore = create((set, get) => ({
       const assistantMsg = {
         role: 'assistant',
         content: fullContent,
+        reasoning_content: fullReasoning || undefined,
         id: (Date.now() + 1).toString(),
       };
 
@@ -241,6 +256,7 @@ export const useChatStore = create((set, get) => ({
         messages: [...state.messages, assistantMsg],
         isStreaming: false,
         streamContent: '',
+        streamReasoningContent: '',
         abortController: null,
       }));
 
@@ -257,7 +273,7 @@ export const useChatStore = create((set, get) => ({
       // Silently ignore AbortError — stopStreaming already handled it.
       if (err instanceof DOMException && err.name === 'AbortError') return;
       console.error('Failed to send message', err);
-      set({ isStreaming: false, streamContent: '', abortController: null });
+      set({ isStreaming: false, streamContent: '', streamReasoningContent: '', abortController: null });
       set((state) => ({
         messages: [
           ...state.messages,

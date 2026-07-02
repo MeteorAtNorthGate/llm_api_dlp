@@ -1,6 +1,6 @@
 /** MessageBubble — renders a single chat message with markdown and file attachments. */
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import useT from '../../hooks/useT';
@@ -47,6 +47,9 @@ export default function MessageBubble({ message }) {
 
   const hasAttachments = isUser && (attachments.length > 0 || fileRefsFromParts.length > 0);
 
+  const [showThinking, setShowThinking] = useState(false);
+  const hasReasoning = !isUser && !!message.reasoning_content;
+
   return (
     <div className={`chat ${isUser ? 'chat-end' : 'chat-start'} mb-4`}>
       <div className="chat-header mb-1 opacity-60 text-xs">
@@ -76,6 +79,29 @@ export default function MessageBubble({ message }) {
                 )}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Reasoning / Thinking section (assistant messages) */}
+        {hasReasoning && (
+          <div className="mb-3 border border-base-content/20 rounded-lg overflow-hidden">
+            <button
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-xs font-medium bg-base-content/10 hover:bg-base-content/15 transition-colors"
+              onClick={() => setShowThinking(!showThinking)}
+            >
+              <span className={`text-[10px] transition-transform ${showThinking ? 'rotate-90' : ''}`}>
+                ▶
+              </span>
+              <span>{t('chat.thinking.title')}</span>
+              <span className="opacity-50 ml-auto">
+                {showThinking ? t('chat.thinking.hideReasoning') : t('chat.thinking.showReasoning')}
+              </span>
+            </button>
+            {showThinking && (
+              <div className="px-3 py-2 text-xs opacity-70 whitespace-pre-wrap border-t border-base-content/20 max-h-[300px] overflow-y-auto">
+                {message.reasoning_content}
+              </div>
+            )}
           </div>
         )}
 
