@@ -64,7 +64,7 @@ export default function MessageBubble({ message }) {
           isUser
             ? 'chat-bubble-primary'
             : 'chat-bubble-neutral text-neutral-content'
-        } ${isStreaming ? 'animate-pulse' : ''}`}
+        }`}
       >
         {/* File attachments (user messages) */}
         {hasAttachments && (

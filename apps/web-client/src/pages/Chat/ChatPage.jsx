@@ -1,6 +1,6 @@
 /** ChatPage — main chat interface with message list and input. */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import Layout from '../../components/layout/Layout';
 import MessageBubble from '../../components/chat/MessageBubble';
 import ChatInput from '../../components/chat/ChatInput';
@@ -26,6 +26,8 @@ export default function ChatPage() {
     newConversation,
   } = useChatStore();
   const messagesEndRef = useRef(null);
+  const scrollContainerRef = useRef(null);
+  const isNearBottomRef = useRef(true);
 
   // Load models on mount
   useEffect(() => {
@@ -40,9 +42,29 @@ export default function ChatPage() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-scroll to bottom
+  // Track whether the user is near the bottom of the scroll area.
+  // When the user scrolls up, we stop auto-following.
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const threshold = 80; // px from bottom to still consider "pinned"
+    isNearBottomRef.current =
+      el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+  }, []);
+
+  // When streaming starts (user sent a message), reset to pinned and scroll.
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (isStreaming) {
+      isNearBottomRef.current = true;
+    }
+  }, [isStreaming]);
+
+  // Smart auto-scroll on content change: only follow if the user hasn't scrolled up.
+  // Use 'instant' to avoid smooth-scroll queue build-up during rapid streaming updates.
+  useEffect(() => {
+    if (isNearBottomRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+    }
   }, [messages, streamContent]);
 
   const handleSend = (content, files) => {
@@ -53,7 +75,11 @@ export default function ChatPage() {
     <Layout>
       <div className="flex flex-col h-full">
         {/* Messages area */}
-        <div className="flex-1 overflow-y-auto px-4 py-6">
+        <div
+          className="flex-1 overflow-y-auto px-4 py-6"
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+        >
           {messages.length === 0 && !isStreaming && (
             <div className="flex items-center justify-center h-full">
               <div className="text-center space-y-3 max-w-md">
