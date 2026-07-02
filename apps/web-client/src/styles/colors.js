@@ -34,8 +34,8 @@ export const lightTheme = {
   'accent-content':    '#ffffff',
 
   /* ── Neutral / Surface Colors ─────────────────────────────────────── */
-  'neutral':           '#1e293b',  /* Slate 800 — dark text */
-  'neutral-content':   '#f8fafc',  /* Slate 50 — on neutral bg */
+  'neutral':           '#f1f5f9',  /* Slate 50 — assistant bubble bg */
+  'neutral-content':   '#1e293b',  /* Slate 800 — on neutral bg */
 
   'base-100':          '#ffffff',  /* Page background */
   'base-200':          '#f1f5f9',  /* Card / panel / sidebar bg */

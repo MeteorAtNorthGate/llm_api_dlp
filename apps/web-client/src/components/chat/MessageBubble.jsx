@@ -163,7 +163,7 @@ export default function MessageBubble({ message, editable = false, onEditResend 
           <div className="flex flex-col gap-2">
             <textarea
               ref={editTextareaRef}
-              className="textarea textarea-ghost w-full min-h-[44px] max-h-[300px] resize-none bg-base-100/20 text-base-content"
+              className="textarea w-full min-h-[44px] max-h-[300px] resize-none bg-white text-gray-900 placeholder:text-gray-400 border-gray-300 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
               value={editText}
               onChange={handleEditInput}
               onKeyDown={handleEditKeyDown}
@@ -171,17 +171,17 @@ export default function MessageBubble({ message, editable = false, onEditResend 
               disabled={!editable}
             />
             <div className="flex items-center justify-end gap-1">
-              <span className="text-xs opacity-50 mr-auto">
+              <span className="text-xs text-white/60 mr-auto">
                 Shift+Enter {t('chat.editNewline')}
               </span>
               <button
-                className="btn btn-ghost btn-xs"
+                className="btn btn-xs btn-ghost text-white/70 hover:text-white hover:bg-white/10"
                 onClick={handleCancelEdit}
               >
                 {t('common.cancel')}
               </button>
               <button
-                className="btn btn-primary btn-xs"
+                className="btn btn-xs bg-white text-indigo-600 hover:bg-gray-100 border-0 font-medium"
                 onClick={handleSubmitEdit}
                 disabled={!editText.trim()}
               >
