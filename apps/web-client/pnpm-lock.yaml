@@ -11,6 +11,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.60.0
         version: 5.101.0(react@19.2.7)
+      katex:
+        specifier: ^0.16.0
+        version: 0.16.47
       ky:
         specifier: ^1.7.0
         version: 1.14.3
