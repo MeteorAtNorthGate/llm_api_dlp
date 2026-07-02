@@ -18,6 +18,7 @@ export default function ChatPage() {
     reasoningEffort,
     activeConversationId,
     sendMessage,
+    stopStreaming,
     loadModels,
     setSelectedModel,
     setReasoningEffort,
@@ -93,6 +94,7 @@ export default function ChatPage() {
         {/* Input area */}
         <ChatInput
           onSend={handleSend}
+          onStop={stopStreaming}
           isStreaming={isStreaming}
           models={availableModels}
           selectedModel={selectedModel}

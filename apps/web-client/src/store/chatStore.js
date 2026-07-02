@@ -10,6 +10,7 @@ export const useChatStore = create((set, get) => ({
   isStreaming: false,
   isUploading: false,
   streamContent: '',
+  abortController: null,  // AbortController for cancelling in-flight stream
   availableModels: [],
   selectedModel: 'deepseek-v4-flash',
   reasoningEffort: '',  // '' = auto, 'low' | 'medium' | 'high' | 'max'
@@ -33,6 +34,36 @@ export const useChatStore = create((set, get) => ({
 
   setSelectedModel: (model) => set({ selectedModel: model }),
   setReasoningEffort: (level) => set({ reasoningEffort: level }),
+
+  // Cancel the in-flight streaming request and save partial content.
+  stopStreaming: () => {
+    const { abortController, streamContent } = get();
+    if (abortController) {
+      abortController.abort();
+    }
+    // Save whatever content has been streamed so far as an assistant message.
+    if (streamContent) {
+      const assistantMsg = {
+        role: 'assistant',
+        content: streamContent,
+        id: Date.now().toString(),
+      };
+      set((state) => ({
+        messages: [...state.messages, assistantMsg],
+        isStreaming: false,
+        streamContent: '',
+        abortController: null,
+        isUploading: false,
+      }));
+    } else {
+      set({
+        isStreaming: false,
+        streamContent: '',
+        abortController: null,
+        isUploading: false,
+      });
+    }
+  },
 
   // Load conversation list
   loadConversations: async () => {
@@ -64,6 +95,11 @@ export const useChatStore = create((set, get) => ({
   // Start a new conversation — create a placeholder on the backend
   // so that file uploads work from the very first message.
   newConversation: async () => {
+    // Cancel any in-flight stream before resetting.
+    const { abortController } = get();
+    if (abortController) {
+      abortController.abort();
+    }
     try {
       const conv = await chatApi.createConversation();
       set({
@@ -72,6 +108,7 @@ export const useChatStore = create((set, get) => ({
         streamContent: '',
         isStreaming: false,
         isUploading: false,
+        abortController: null,
         reasoningEffort: '',
       });
       // Refresh sidebar list
@@ -85,6 +122,7 @@ export const useChatStore = create((set, get) => ({
         streamContent: '',
         isStreaming: false,
         isUploading: false,
+        abortController: null,
         reasoningEffort: '',
       });
     }
@@ -133,7 +171,8 @@ export const useChatStore = create((set, get) => ({
       id: Date.now().toString(),
     };
     const updatedMessages = [...messages, userMsg];
-    set({ messages: updatedMessages, isStreaming: true, streamContent: '' });
+    const controller = new AbortController();
+    set({ messages: updatedMessages, isStreaming: true, streamContent: '', abortController: controller });
 
     try {
       const payload = {
@@ -150,7 +189,7 @@ export const useChatStore = create((set, get) => ({
         payload.reasoning_effort = reasoningEffort;
       }
 
-      const response = await chatApi.completions(payload);
+      const response = await chatApi.completions(payload, controller.signal);
 
       // Update conversation ID from headers (for new conversations)
       const newConvId = response.headers.get('X-Conversation-Id');
@@ -202,6 +241,7 @@ export const useChatStore = create((set, get) => ({
         messages: [...state.messages, assistantMsg],
         isStreaming: false,
         streamContent: '',
+        abortController: null,
       }));
 
       // Reload conversation list to update titles
@@ -214,8 +254,10 @@ export const useChatStore = create((set, get) => ({
       }, 3000);
 
     } catch (err) {
+      // Silently ignore AbortError — stopStreaming already handled it.
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       console.error('Failed to send message', err);
-      set({ isStreaming: false, streamContent: '' });
+      set({ isStreaming: false, streamContent: '', abortController: null });
       set((state) => ({
         messages: [
           ...state.messages,

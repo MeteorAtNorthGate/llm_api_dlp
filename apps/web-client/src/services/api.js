@@ -40,10 +40,11 @@ export const authApi = {
 // ── Chat ──────────────────────────────────────────────
 
 export const chatApi = {
-  completions: (payload) =>
+  completions: (payload, signal) =>
     api.post('chat/completions', {
       json: payload,
       timeout: 300000,
+      ...(signal ? { signal } : {}),
     }),
 
   listModels: () =>
