@@ -111,7 +111,7 @@ export default function MessageBubble({ message, editable = false, onEditResend 
       <div
         className={`chat-bubble max-w-[85%] ${
           isUser
-            ? 'chat-bubble-primary'
+            ? 'chat-bubble-user'
             : 'chat-bubble-neutral text-neutral-content'
         }`}
       >
@@ -121,7 +121,7 @@ export default function MessageBubble({ message, editable = false, onEditResend 
             {attachments.map((att) => (
               <div
                 key={att.id}
-                className="flex items-center gap-1 bg-base-100/20 rounded-full pl-2 pr-2 py-0.5 text-xs"
+                className="flex items-center gap-1 file-badge rounded-full pl-2 pr-2 py-0.5 text-xs"
                 title={`${att.file_name} (${formatSize(att.file_size)})${att.storage_status === 'failed' ? ' — Parse failed' : ''}`}
               >
                 <span>{FILE_TYPE_ICONS[att.file_type] || '📎'}</span>
@@ -163,7 +163,7 @@ export default function MessageBubble({ message, editable = false, onEditResend 
           <div className="flex flex-col gap-2">
             <textarea
               ref={editTextareaRef}
-              className="textarea w-full min-h-[44px] max-h-[300px] resize-none bg-white text-gray-900 placeholder:text-gray-400 border-gray-300 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
+              className="textarea edit-textarea w-full min-h-[44px] max-h-[300px] resize-none"
               value={editText}
               onChange={handleEditInput}
               onKeyDown={handleEditKeyDown}
@@ -171,17 +171,17 @@ export default function MessageBubble({ message, editable = false, onEditResend 
               disabled={!editable}
             />
             <div className="flex items-center justify-end gap-1">
-              <span className="text-xs text-white/60 mr-auto">
+              <span className="text-xs edit-hint mr-auto">
                 Shift+Enter {t('chat.editNewline')}
               </span>
               <button
-                className="btn btn-xs btn-ghost text-white/70 hover:text-white hover:bg-white/10"
+                className="btn btn-xs btn-edit-cancel"
                 onClick={handleCancelEdit}
               >
                 {t('common.cancel')}
               </button>
               <button
-                className="btn btn-xs bg-white text-indigo-600 hover:bg-gray-100 border-0 font-medium"
+                className="btn btn-xs btn-edit-send font-medium"
                 onClick={handleSubmitEdit}
                 disabled={!editText.trim()}
               >

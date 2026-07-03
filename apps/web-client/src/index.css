@@ -97,3 +97,69 @@
   border-radius: 0.25rem;
   font-weight: 500;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   User Message Bubble — Light Gray / Black / White / Deep Blue
+   Replaces chat-bubble-primary for user messages with a refined
+   neutral palette that complements the light theme.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.chat-bubble-user {
+  background-color: #e2e8f0;  /* slate-200 — light gray */
+  color: #1e293b;             /* slate-800 — near-black text */
+}
+
+/* ── File attachment badges inside user bubble ── */
+
+.chat-bubble-user .file-badge {
+  background-color: rgba(30, 58, 95, 0.08);  /* deep-blue 8% tint */
+  color: #1e3a5f;
+}
+
+/* ── Edit textarea inside user bubble ── */
+
+.chat-bubble-user .edit-textarea {
+  background-color: #ffffff;
+  color: #1e293b;
+  border-color: #cbd5e1;      /* slate-300 */
+}
+.chat-bubble-user .edit-textarea::placeholder {
+  color: #94a3b8;             /* slate-400 */
+}
+.chat-bubble-user .edit-textarea:focus {
+  outline: none;
+  border-color: #1e3a5f;      /* deep blue */
+  box-shadow: 0 0 0 1px #1e3a5f;
+}
+
+/* ── Edit hint (Shift+Enter tip) ── */
+
+.chat-bubble-user .edit-hint {
+  color: #64748b;             /* slate-500 */
+}
+
+/* ── Cancel button in edit mode ── */
+
+.btn-edit-cancel {
+  color: #64748b;
+  background: transparent;
+  border-color: transparent;
+}
+.btn-edit-cancel:hover {
+  color: #1e293b;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* ── Send button in edit mode ── */
+
+.btn-edit-send {
+  background-color: #1e3a5f;  /* deep blue */
+  color: #ffffff;
+  border-color: transparent;
+}
+.btn-edit-send:hover {
+  background-color: #152e4a;  /* darker deep blue */
+}
+.btn-edit-send:disabled {
+  opacity: 0.45;
+}
