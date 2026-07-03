@@ -2,7 +2,7 @@
 
 import { useAuth } from '../../hooks/useAuth';
 import useT from '../../hooks/useT';
-import LanguageToggle from '../ui/LanguageToggle';
+import SettingsMenu from '../ui/SettingsMenu';
 
 export default function Header() {
   const { user, logout } = useAuth();
@@ -36,7 +36,7 @@ export default function Header() {
         </div>
       </div>
       <div className="flex-none gap-2">
-        <LanguageToggle />
+        <SettingsMenu />
         {user && (
           <div className="dropdown dropdown-end">
             <label tabIndex={0} className="btn btn-ghost btn-sm gap-2">

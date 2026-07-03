@@ -244,5 +244,13 @@
 
   "lang.switch": "Switch Language",
   "lang.zh": "中",
-  "lang.en": "EN"
+  "lang.en": "EN",
+
+  "settings.title": "Settings",
+  "settings.language": "Language",
+  "settings.theme": "Theme",
+  "settings.themeLight": "Light",
+  "settings.themeDark": "Dark",
+  "settings.langZh": "中文",
+  "settings.langEn": "English"
 }

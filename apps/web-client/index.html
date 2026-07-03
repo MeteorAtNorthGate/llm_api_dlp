@@ -5,6 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LLM Platform</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script>
+      // Apply saved theme before any paint to avoid flash
+      (function(){
+        try {
+          var raw = localStorage.getItem('app-theme');
+          if (raw) {
+            var parsed = JSON.parse(raw);
+            if (parsed.state && parsed.state.theme) {
+              document.documentElement.setAttribute('data-theme', parsed.state.theme);
+            }
+          }
+        } catch(e) {}
+      })();
+    </script>
   </head>
   <body class="min-h-screen bg-base-200">
     <div id="root"></div>
