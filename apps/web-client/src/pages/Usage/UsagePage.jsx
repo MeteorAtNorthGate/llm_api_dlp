@@ -263,7 +263,7 @@ export default function UsagePage() {
                       <Line
                         type="monotone"
                         dataKey={messages['usage.inputMiss']}
-                        stroke="oklch(0.55 0.2 260)"
+                        className="chart-line-input-miss"
                         strokeWidth={2}
                         dot={false}
                         activeDot={{ r: 4 }}
@@ -271,7 +271,7 @@ export default function UsagePage() {
                       <Line
                         type="monotone"
                         dataKey={messages['usage.inputHit']}
-                        stroke="oklch(0.65 0.2 150)"
+                        className="chart-line-input-hit"
                         strokeWidth={2}
                         dot={false}
                         activeDot={{ r: 4 }}
@@ -279,7 +279,7 @@ export default function UsagePage() {
                       <Line
                         type="monotone"
                         dataKey={messages['usage.output']}
-                        stroke="oklch(0.7 0.18 85)"
+                        className="chart-line-output"
                         strokeWidth={2}
                         dot={false}
                         activeDot={{ r: 4 }}

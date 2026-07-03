@@ -99,67 +99,76 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   User Message Bubble — Light Gray / Black / White / Deep Blue
-   Replaces chat-bubble-primary for user messages with a refined
-   neutral palette that complements the light theme.
+   User Message Bubble — themed via daisyUI tokens.
+   Every colour references oklch(var(--xxx)) so it adapts to both
+   the light (llm) and dark (llmDark) themes automatically.
    ═══════════════════════════════════════════════════════════════════ */
 
 .chat-bubble-user {
-  background-color: #e2e8f0;  /* slate-200 — light gray */
-  color: #1e293b;             /* slate-800 — near-black text */
+  background-color: oklch(var(--b3));        /* base-300 — light gray in light, dark slate in dark */
+  color: oklch(var(--bc));                   /* base-content */
 }
 
 /* ── File attachment badges inside user bubble ── */
 
 .chat-bubble-user .file-badge {
-  background-color: rgba(30, 58, 95, 0.08);  /* deep-blue 8% tint */
-  color: #1e3a5f;
+  background-color: oklch(var(--p) / 0.08);  /* primary at 8% */
+  color: oklch(var(--p));                    /* primary */
 }
 
 /* ── Edit textarea inside user bubble ── */
 
 .chat-bubble-user .edit-textarea {
-  background-color: #ffffff;
-  color: #1e293b;
-  border-color: #cbd5e1;      /* slate-300 */
+  background-color: oklch(var(--b1));        /* base-100 */
+  color: oklch(var(--bc));                   /* base-content */
+  border-color: oklch(var(--b3));            /* base-300 */
 }
 .chat-bubble-user .edit-textarea::placeholder {
-  color: #94a3b8;             /* slate-400 */
+  color: oklch(var(--bc) / 0.4);            /* base-content at 40% */
 }
 .chat-bubble-user .edit-textarea:focus {
   outline: none;
-  border-color: #1e3a5f;      /* deep blue */
-  box-shadow: 0 0 0 1px #1e3a5f;
+  border-color: oklch(var(--p));             /* primary */
+  box-shadow: 0 0 0 1px oklch(var(--p));
 }
 
 /* ── Edit hint (Shift+Enter tip) ── */
 
 .chat-bubble-user .edit-hint {
-  color: #64748b;             /* slate-500 */
+  color: oklch(var(--bc) / 0.5);            /* base-content at 50% */
 }
 
 /* ── Cancel button in edit mode ── */
 
 .btn-edit-cancel {
-  color: #64748b;
+  color: oklch(var(--bc) / 0.5);
   background: transparent;
   border-color: transparent;
 }
 .btn-edit-cancel:hover {
-  color: #1e293b;
-  background-color: rgba(0, 0, 0, 0.05);
+  color: oklch(var(--bc));
+  background-color: oklch(var(--bc) / 0.05);
 }
 
 /* ── Send button in edit mode ── */
 
 .btn-edit-send {
-  background-color: #1e3a5f;  /* deep blue */
-  color: #ffffff;
+  background-color: oklch(var(--p));         /* primary */
+  color: oklch(var(--pc));                   /* primary-content */
   border-color: transparent;
 }
 .btn-edit-send:hover {
-  background-color: #152e4a;  /* darker deep blue */
+  filter: brightness(0.9);
 }
 .btn-edit-send:disabled {
   opacity: 0.45;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Chart line colours — referenced via daisyUI semantic tokens so
+   charts adapt to the active theme automatically.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.chart-line-input-miss { stroke: oklch(var(--p));  }  /* primary    — blue */
+.chart-line-input-hit  { stroke: oklch(var(--su)); }  /* success    — green */
+.chart-line-output     { stroke: oklch(var(--wa)); }  /* warning    — amber */
