@@ -57,16 +57,23 @@ export default function MessageBubble({ message, editable = false, onEditResend 
   // ── In-place editing state ──
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState('');
+  const [editWidth, setEditWidth] = useState(null);
   const editTextareaRef = useRef(null);
+  const bubbleRef = useRef(null);
 
   const handleStartEdit = useCallback(() => {
     setEditText(message.content || '');
+    // Lock bubble width so edit mode doesn't jump
+    if (bubbleRef.current) {
+      setEditWidth(bubbleRef.current.offsetWidth);
+    }
     setIsEditing(true);
   }, [message.content]);
 
   const handleCancelEdit = useCallback(() => {
     setIsEditing(false);
     setEditText('');
+    setEditWidth(null);
   }, []);
 
   const handleSubmitEdit = useCallback(() => {
@@ -74,6 +81,7 @@ export default function MessageBubble({ message, editable = false, onEditResend 
     if (!trimmed) return;
     setIsEditing(false);
     setEditText('');
+    setEditWidth(null);
     onEditResend?.(trimmed);
   }, [editText, onEditResend]);
 
@@ -109,6 +117,7 @@ export default function MessageBubble({ message, editable = false, onEditResend 
         {isUser ? t('chat.you') : t('chat.assistant')}
       </div>
       <div
+        ref={bubbleRef}
         className={`chat-bubble max-w-[85%] ${
           isUser
             ? 'chat-bubble-user'
@@ -160,7 +169,7 @@ export default function MessageBubble({ message, editable = false, onEditResend 
 
         {/* Message content */}
         {isUser && isEditing ? (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2" style={editWidth ? { width: Math.max(editWidth, 260) } : undefined}>
             <textarea
               ref={editTextareaRef}
               className="textarea edit-textarea w-full min-h-[44px] max-h-[300px] resize-none"
