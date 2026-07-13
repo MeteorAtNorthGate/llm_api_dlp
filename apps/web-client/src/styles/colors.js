@@ -64,33 +64,33 @@ export const lightTheme = {
 };
 
 export const darkTheme = {
-  /* ── Brand Colors ─────────────────────────────────────────────────── */
-  'primary':           '#818cf8',  /* Indigo 400 */
-  'primary-content':   '#1e1b4b',
+  /* ── Brand Colors — VS Code Dark+ inspired ────────────────────────── */
+  'primary':           '#007acc',  /* VS Code blue — active states */
+  'primary-content':   '#ffffff',
 
-  'secondary':         '#a78bfa',  /* Violet 400 */
-  'secondary-content': '#2e1065',
+  'secondary':         '#3794ff',  /* Link / selection blue */
+  'secondary-content': '#ffffff',
 
-  'accent':            '#22d3ee',  /* Cyan 400 */
-  'accent-content':    '#164e63',
+  'accent':            '#4ec9b0',  /* Teal highlight — syntax accent */
+  'accent-content':    '#1e1e1e',
 
-  /* ── Neutral / Surface Colors ─────────────────────────────────────── */
-  'neutral':           '#cbd5e1',  /* Slate 300 */
-  'neutral-content':   '#0f172a',
+  /* ── Neutral / Surface Colors — VS Code Dark+ inspired ────────────── */
+  'neutral':           '#2d2d2d',  /* Subtle bubble / input bg */
+  'neutral-content':   '#cccccc',
 
-  'base-100':          '#0f172a',  /* Slate 900 */
-  'base-200':          '#1e293b',  /* Slate 800 */
-  'base-300':          '#334155',  /* Slate 700 */
-  'base-content':      '#f1f5f9',  /* Slate 100 */
+  'base-100':          '#1e1e1e',  /* Editor / page background */
+  'base-200':          '#252526',  /* Sidebar / panel background */
+  'base-300':          '#3c3c3c',  /* Borders, dividers */
+  'base-content':      '#d4d4d4',  /* Main text color */
 
-  /* ── Semantic Colors ──────────────────────────────────────────────── */
-  'info':              '#60a5fa',
+  /* ── Semantic Colors — VS Code Dark+ inspired ─────────────────────── */
+  'info':              '#3794ff',
   'info-content':      '#ffffff',
-  'success':           '#34d399',
-  'success-content':   '#ffffff',
-  'warning':           '#fbbf24',
-  'warning-content':   '#ffffff',
-  'error':             '#f87171',
+  'success':           '#89d185',
+  'success-content':   '#1e1e1e',
+  'warning':           '#cca700',
+  'warning-content':   '#1e1e1e',
+  'error':             '#f14c4c',
   'error-content':     '#ffffff',
 
   /* ── Spacing & Radius Tokens ──────────────────────────────────────── */
