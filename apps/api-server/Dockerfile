@@ -1,5 +1,9 @@
 FROM python:3.11-slim
 
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY
+
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \

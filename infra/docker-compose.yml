@@ -109,6 +109,11 @@ services:
     build:
       context: ../apps/api-server
       dockerfile: Dockerfile
+      network: host
+      args:
+        - HTTP_PROXY=http://127.0.0.1:7890
+        - HTTPS_PROXY=http://127.0.0.1:7890
+        - NO_PROXY=localhost,127.0.0.1
     image: llm-dlp-api:latest
     container_name: llm-dlp-api
     restart: unless-stopped
@@ -147,6 +152,11 @@ services:
     build:
       context: ../apps/web-client
       dockerfile: Dockerfile
+      network: host
+      args:
+        - HTTP_PROXY=http://127.0.0.1:7890
+        - HTTPS_PROXY=http://127.0.0.1:7890
+        - NO_PROXY=localhost,127.0.0.1
     image: llm-dlp-web:latest
     container_name: llm-dlp-web
     restart: unless-stopped
