@@ -3,6 +3,7 @@ FROM node:24-alpine AS build
 WORKDIR /app
 
 # 启用 corepack 并激活 pnpm
+ENV CI=true
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
