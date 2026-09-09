@@ -1,4 +1,7 @@
-.PHONY: help dev-infra dev-api dev-web build test-api test-web lint clean db-migrate db-rollback build-cloud push-cloud
+.PHONY: help dev-infra dev-api dev-web build test-api test-web lint clean db-migrate db-rollback build-cloud push-cloud ensure-images
+
+# 第三方依赖镜像（与 deploy.sh 里的 EXTERNAL_IMAGES 保持一致）
+EXTERNAL_IMAGES = postgres:17-alpine quay.io/keycloak/keycloak:26.6.3 python:3.14-slim ghcr.io/berriai/litellm:v1.87.1 quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
 
 help:           ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -26,9 +29,13 @@ down:           ## Stop all local services
 
 # --- Cloud deployment ---
 
+ensure-images:  ## 补齐缺失的第三方镜像（本地已有的同 tag 镜像不更新）
+	infra/ensure-images.sh $(EXTERNAL_IMAGES)
+
 build-cloud:    ## Build images and package for cloud (output: infra/images.tar.gz)
 	DOCKER_BUILDKIT=0 docker compose -f infra/docker-compose.yml build
-	docker save llm-dlp-api:latest llm-dlp-web:latest postgres:17-alpine quay.io/keycloak/keycloak:26.6.3 python:3.14-slim ghcr.io/berriai/litellm:v1.87.1 quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z -o infra/images.tar.gz
+	infra/ensure-images.sh $(EXTERNAL_IMAGES)
+	docker save llm-dlp-api:latest llm-dlp-web:latest $(EXTERNAL_IMAGES) -o infra/images.tar.gz
 	@echo "✓ infra/images.tar.gz ready for transfer"
 
 push-cloud: build-cloud  ## Build + upload to cloud server (set CLOUD_HOST env var)

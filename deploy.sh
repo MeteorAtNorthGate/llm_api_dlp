@@ -19,11 +19,10 @@ set -e
 
 # --- 本地准备工作 ---
 
-echo "📦 [1/7] 确保外部依赖镜像已缓存..."
-for img in $EXTERNAL_IMAGES; do
-    echo "  检查 $img ..."
-    docker pull "$img" || echo "  ⚠️  无法拉取 $img，将使用本地缓存"
-done
+echo "📦 [1/7] 确保外部依赖镜像已缓存（本地已有则不更新）..."
+# 只补齐缺失的第三方镜像；本地已有的同 tag 镜像直接复用，不再拉取更新。
+# 需要强制升级到该 tag 的最新小版本时：FORCE_PULL_IMAGES=1 ./deploy.sh
+infra/ensure-images.sh $EXTERNAL_IMAGES
 
 echo "📝 [2/7] 注入前端构建变量..."
 VITE_KC_URL=$(grep -oP '^VITE_KEYCLOAK_URL=\K.*' infra/.env.cloud 2>/dev/null || echo "http://localhost:8080")
