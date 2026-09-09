@@ -8,7 +8,7 @@ import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Spinner from '../../components/ui/Spinner';
 import { useKeyStore } from '../../store/keyStore';
-import { chatApi } from '../../services/api';
+import { keysApi } from '../../services/api';
 import useT from '../../hooks/useT';
 
 export default function AdminPage() {
@@ -41,7 +41,9 @@ export default function AdminPage() {
 
   const loadAvailableModels = useCallback(async () => {
     try {
-      const data = await chatApi.listModels();
+      // keysApi (not chatApi) — models hidden from the chat picker must
+      // still be selectable on an API key.
+      const data = await keysApi.listModels();
       const models = (data.models || []).map((m) => ({
         value: m.name,
         label: m.name,

@@ -71,6 +71,10 @@ export const chatApi = {
 export const keysApi = {
   list: () => api.get('keys').json(),
 
+  // Model choices for the generate-key dialog. Unlike chatApi.listModels,
+  // this includes models hidden from the chat picker.
+  listModels: () => api.get('keys/models').json(),
+
   generate: (payload) =>
     api.post('keys/generate', { json: payload }).json(),
 

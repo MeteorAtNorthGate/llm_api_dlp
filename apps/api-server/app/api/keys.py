@@ -21,6 +21,7 @@ from app.schemas.keys import (
     KeySummary,
     KeyUsageResponse,
 )
+from app.services.model_service import list_models
 
 router = APIRouter()
 
@@ -78,6 +79,33 @@ def _resolve_model_whitelist(user_claims: dict, requested_models: list[str] | No
         return requested_models
     # Default: no restriction — key can access all models
     return None
+
+
+@router.get("/models")
+async def list_key_models(
+    user_claims: dict = Depends(get_current_user),
+):
+    """List models selectable when generating an API key.
+
+    Unlike ``/chat/models`` this deliberately ignores ``hidden_from_chat``:
+    that flag only controls the chat model picker, and models hidden there
+    are typically the API-only ones. ``system-utility`` stays excluded —
+    it is the platform's internal model, never handed out to developers.
+    """
+    if not _is_developer(user_claims):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only developers can manage API keys",
+        )
+
+    models = await list_models(include_hidden_from_chat=True)
+    if models is None:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="LiteLLM model list failed",
+        )
+
+    return {"models": models}
 
 
 @router.get("", response_model=KeyUsageResponse)

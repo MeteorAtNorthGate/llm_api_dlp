@@ -27,6 +27,7 @@ from app.schemas.chat import (
 )
 from app.services.dlp_service import apply_masking
 from app.services.file_service import delete_prefix_sync
+from app.services.model_service import list_models
 from app.services.parse_service import build_injection_text
 
 router = APIRouter()
@@ -36,40 +37,13 @@ router = APIRouter()
 async def list_available_models(
     user_claims: dict = Depends(get_current_user),
 ):
-    """List models available for chat — any authenticated user can call."""
-    import httpx
+    """List models available for chat — any authenticated user can call.
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.get(
-            f"{settings.LITELLM_BASE_URL}/model/info",
-            headers={"Authorization": f"Bearer {settings.LITELLM_MASTER_KEY}"},
-        )
-        if resp.status_code != 200:
-            return {"models": []}
-
-        data = resp.json()
-        entries = data.get("data", [])
-
-    models = []
-    for entry in entries:
-        model_name = entry.get("model_name", "unknown")
-        model_info = entry.get("model_info", {}) or {}
-        litellm_params = entry.get("litellm_params", {}) or {}
-
-        # Skip models explicitly hidden from the chat picker.
-        # system-utility is always excluded — it's the platform's own
-        # internal model, never intended for direct user chat.
-        if model_info.get("hidden_from_chat") or model_name == "system-utility":
-            continue
-
-        models.append({
-            "id": model_info.get("id", model_name),
-            "name": model_name,
-            "provider": model_info.get("litellm_provider", ""),
-            "description": model_info.get("description", ""),
-        })
-
-    return {"models": models}
+    Models hidden from the chat picker are excluded here only; they stay
+    selectable when generating an API key (see ``GET /keys/models``).
+    """
+    models = await list_models()
+    return {"models": models or []}
 
 
 def _apply_reasoning_params(
