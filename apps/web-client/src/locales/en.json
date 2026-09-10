@@ -104,6 +104,8 @@
   "providers.modelName": "Model Name",
   "providers.provider": "Provider",
   "providers.modelId": "Model ID",
+  "providers.modelIdRequired": "Model ID is required.",
+  "providers.modelIdEditHint": "The provider prefix remains unchanged.",
   "providers.apiKey": "API Key",
   "providers.apiKeyHint": "The API key from the LLM provider. Stored securely and never shown again.",
   "providers.apiBaseUrl": "API Base URL",

@@ -104,6 +104,8 @@
   "providers.modelName": "模型名称",
   "providers.provider": "供应商",
   "providers.modelId": "模型 ID",
+  "providers.modelIdRequired": "模型 ID 为必填项。",
+  "providers.modelIdEditHint": "供应商前缀保持不变。",
   "providers.apiKey": "API 密钥",
   "providers.apiKeyHint": "来自 LLM 供应商的 API 密钥。安全存储，不再显示。",
   "providers.apiBaseUrl": "API Base URL",

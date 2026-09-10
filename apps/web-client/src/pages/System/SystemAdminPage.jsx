@@ -58,7 +58,7 @@ export default function SystemAdminPage() {
   // Edit modal
   const [showEdit, setShowEdit] = useState(false);
   const [editModel, setEditModel] = useState(null);
-  const [editForm, setEditForm] = useState({ api_key: '', api_base: '', rpm: null, tpm: null });
+  const [editForm, setEditForm] = useState({ model_id: '', api_key: '', api_base: '', rpm: null, tpm: null });
   const [editing, setEditing] = useState(false);
   const [editError, setEditError] = useState(null);
   const [showKey, setShowKey] = useState(false);
@@ -170,6 +170,7 @@ export default function SystemAdminPage() {
     setEditModel(model);
     setEditForm({
       model_name: model.model_name,
+      model_id: model.model_id,
       api_key: '',
       api_base: model.api_base || '',
       rpm: model.rpm,
@@ -185,11 +186,20 @@ export default function SystemAdminPage() {
 
   const handleEdit = async () => {
     setEditError(null);
+    const modelId = editForm.model_id.trim();
+    if (!modelId) {
+      setEditError(t('providers.modelIdRequired'));
+      return;
+    }
     setEditing(true);
     try {
       const payload = {};
       if (editForm.model_name && editForm.model_name !== editModel.model_name) {
         payload.model_name = editForm.model_name;
+      }
+      if (modelId !== editModel.model_id) {
+        payload.model_id = modelId;
+        payload.provider = editModel.provider;
       }
       if (editForm.api_key) {
         payload.api_key = editForm.api_key;
@@ -562,7 +572,7 @@ export default function SystemAdminPage() {
             <div className="space-y-4">
               <div className="flex items-center gap-3 p-3 bg-base-200 rounded-lg">
                 <span className="badge badge-outline">{editModel.provider}</span>
-                <code className="text-sm">{editModel.model_id}</code>
+                <code className="text-sm">{editForm.model_id}</code>
               </div>
 
               <div className="form-control">
@@ -572,6 +582,18 @@ export default function SystemAdminPage() {
                   value={editForm.model_name}
                   onChange={(e) => setEditForm((f) => ({ ...f, model_name: e.target.value }))}
                 />
+              </div>
+
+              <div className="form-control">
+                <label className="label"><span className="label-text font-medium">{t('providers.modelId')} *</span></label>
+                <input
+                  type="text" className="input input-bordered font-mono text-sm"
+                  value={editForm.model_id}
+                  onChange={(e) => setEditForm((f) => ({ ...f, model_id: e.target.value }))}
+                />
+                <label className="label"><span className="label-text-alt text-base-content/50">
+                  {t('providers.modelIdEditHint')}
+                </span></label>
               </div>
 
               <div className="form-control">

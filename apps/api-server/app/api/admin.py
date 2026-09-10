@@ -100,6 +100,8 @@ class ModelAddRequest(BaseModel):
 class ModelUpdateRequest(BaseModel):
     """Partial update — all fields optional."""
     model_name: str | None = Field(default=None, description="New display name")
+    model_id: str | None = Field(default=None, description="New provider model ID")
+    provider: str | None = Field(default=None, description="Provider used to build the LiteLLM model path")
     api_key: str | None = Field(default=None, description="New provider API key")
     api_base: str | None = Field(default=None, description="New API base URL")
     rpm: int | None = Field(default=None, description="Requests per minute limit")
@@ -268,8 +270,12 @@ async def update_model(
     body: ModelUpdateRequest,
     user: dict = Depends(_require_admin),
 ):
-    """Update an existing model — change its API key, name, or limits."""
+    """Update an existing model — change its provider model ID, key, name, or limits."""
     litellm_params: dict = {}
+    if body.model_id is not None:
+        litellm_params["model"] = _build_litellm_model(
+            body.provider or "", body.model_id
+        )
     if body.api_key is not None:
         litellm_params["api_key"] = body.api_key
     if body.api_base is not None:
