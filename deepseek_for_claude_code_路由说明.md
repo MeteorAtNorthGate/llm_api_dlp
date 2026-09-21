@@ -1,5 +1,8 @@
 # deepseek_for_cc 特殊路由链路
 
+> 姊妹篇：[`deepseek_responses_路由说明.md`](./deepseek_responses_路由说明.md)（Responses API 面，用于联网搜索）。
+> 两者解决的问题不同，不要混用。
+
 ## 背景
 
 DeepSeek 提供了一个 Anthropic 兼容端点 `https://api.deepseek.com/anthropic`，可以接收 Anthropic Messages API 格式的请求，但只接受 DeepSeek 的原生模型名（如 `deepseek-v4-pro`，不带 provider 前缀）。

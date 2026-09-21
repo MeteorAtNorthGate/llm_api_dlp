@@ -51,8 +51,8 @@ All commands run from project root (`llm_api_dlp/`). Open a separate terminal fo
 ### First-time setup
 
 ```bash
-# 1. Create Python venv & install API deps
-cd apps/api-server && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt && cd ../..
+# 1. Create Python venv & install API deps (+ dev tooling for `make lint`)
+cd apps/api-server && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt -r requirements-dev.txt && cd ../..
 
 # 2. Install web deps
 cd apps/web-client && pnpm install && cd ../..

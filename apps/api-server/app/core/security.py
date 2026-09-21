@@ -1,7 +1,7 @@
 """JWT verification and OIDC security helpers."""
 
 from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from jose.exceptions import ExpiredSignatureError
 
@@ -17,8 +17,9 @@ async def _fetch_jwks() -> dict:
     if _jwks is not None:
         return _jwks
 
-    import httpx
     from urllib.parse import urlparse
+
+    import httpx
 
     async with httpx.AsyncClient() as client:
         # Fetch OIDC config to get jwks_uri path
@@ -66,7 +67,6 @@ async def verify_jwt(token: str) -> dict:
             )
 
         # Build the public key from JWK
-        from jose import constants
         from jose.jwk import construct
 
         public_key = construct(key, algorithm=key.get("alg", "RS256"))
@@ -86,12 +86,12 @@ async def verify_jwt(token: str) -> dict:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has expired",
-        )
+        ) from None
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token",
-        )
+        ) from None
 
 
 security_scheme = HTTPBearer(auto_error=False)

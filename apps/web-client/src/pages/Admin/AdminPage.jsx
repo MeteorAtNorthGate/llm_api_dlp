@@ -5,7 +5,6 @@ import Layout from '../../components/layout/Layout';
 import KeyCard from '../../components/admin/KeyCard';
 import UsageChart from '../../components/admin/UsageChart';
 import Modal from '../../components/ui/Modal';
-import Button from '../../components/ui/Button';
 import Spinner from '../../components/ui/Spinner';
 import { useKeyStore } from '../../store/keyStore';
 import { keysApi } from '../../services/api';

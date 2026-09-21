@@ -1,7 +1,7 @@
 """File upload and management API endpoints."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
@@ -142,7 +142,7 @@ async def upload_attachment(
                 parse_document, content, file.filename
             )
             attachment.parsed_text = parsed_text
-            attachment.parsed_at = datetime.now(timezone.utc)
+            attachment.parsed_at = datetime.now(UTC)
             attachment.storage_status = "completed"
         except Exception as e:
             attachment.storage_status = "failed"
@@ -158,7 +158,7 @@ async def upload_attachment(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"File processing failed: {e}",
-        )
+        ) from e
 
     return _attachment_to_schema(attachment)
 

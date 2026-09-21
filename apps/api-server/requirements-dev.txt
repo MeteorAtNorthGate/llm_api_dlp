@@ -1,0 +1,7 @@
+# Development-only tooling. Not installed into the runtime image (see Dockerfile,
+# which only installs requirements.txt).
+#
+#   cd apps/api-server && .venv/bin/pip install -r requirements-dev.txt
+#
+# Required by `make lint`.
+ruff>=0.16.0

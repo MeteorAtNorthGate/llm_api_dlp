@@ -1,7 +1,7 @@
 """Auth endpoints — Keycloak OIDC callback and user info."""
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.core.config import settings
 from app.core.security import get_current_user

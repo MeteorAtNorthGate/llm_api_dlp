@@ -26,11 +26,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.core.security import get_current_user, is_admin
 from app.db.models.api_key import ApiKey
 from app.db.models.user import User
-from app.db.session import get_session, get_litellm_session
+from app.db.session import get_litellm_session, get_session
 from app.schemas.statistics import (
     ApiKeyStats,
     DailyUsage,
@@ -217,7 +216,6 @@ async def get_statistics(
     # ── Load local data ──────────────────────────────────────────────────
     users_result = await session.execute(select(User))
     all_users: list[User] = users_result.scalars().all()
-    id_to_user: dict[uuid.UUID, User] = {u.id: u for u in all_users}
 
     api_keys_result = await session.execute(select(ApiKey))
     all_api_keys: list[ApiKey] = api_keys_result.scalars().all()

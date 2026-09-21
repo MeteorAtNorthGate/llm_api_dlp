@@ -1,0 +1,28 @@
+[tool.ruff]
+# `make lint` runs `ruff check app/` from this directory, so this file is the
+# config it picks up.  Kept explicit on purpose: ruff's built-in defaults have
+# widened considerably between releases, and pinning the rule set here keeps
+# CI and developer machines reporting the same thing.
+line-length = 124
+target-version = "py311"
+src = ["app"]
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "UP", # pyupgrade
+    "B",  # flake8-bugbear
+]
+
+ignore = [
+    # FastAPI's dependency-injection idiom is a call in a default argument
+    # (`user: dict = Depends(require_admin)`) — flagging it produces nothing
+    # but noise in this codebase.
+    "B008",
+    # E501 is enforced by the formatter's line-length above, not by the linter;
+    # long URLs and log strings are not worth wrapping.
+    "E501",
+]

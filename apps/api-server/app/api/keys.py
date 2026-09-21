@@ -2,7 +2,7 @@
 
 import json
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -172,7 +172,7 @@ async def generate_key(
 
     expires_at = None
     if body.duration_days:
-        expires_at = datetime.now(timezone.utc) + timedelta(days=body.duration_days)
+        expires_at = datetime.now(UTC) + timedelta(days=body.duration_days)
 
     # Call LiteLLM Admin API to generate the virtual key
     litellm_payload: dict = {

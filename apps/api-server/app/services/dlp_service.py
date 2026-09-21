@@ -5,8 +5,7 @@ document text goes through the same DLP pipeline as regular chat messages.
 """
 
 import re
-from dataclasses import dataclass, field
-from typing import ClassVar
+from dataclasses import dataclass
 
 
 @dataclass

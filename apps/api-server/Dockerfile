@@ -15,4 +15,7 @@ COPY . .
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "alembic stamp 0001 2>/dev/null; alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+# Migrations run from the entrypoint, which works out the correct starting
+# revision instead of blindly stamping. Invoked via `sh` rather than directly so
+# it does not depend on the executable bit surviving a checkout.
+CMD ["sh", "/app/docker-entrypoint.sh"]

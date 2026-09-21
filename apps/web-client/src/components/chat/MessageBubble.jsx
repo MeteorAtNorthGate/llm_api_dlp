@@ -30,7 +30,6 @@ function formatSize(bytes) {
 export default function MessageBubble({ message, editable = false, onEditResend }) {
   const t = useT();
   const isUser = message.role === 'user';
-  const isStreaming = message.id?.startsWith('__stream');
 
   const content = useMemo(() => {
     if (typeof message.content !== 'string') return '';

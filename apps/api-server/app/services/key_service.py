@@ -1,10 +1,8 @@
 """Key service — business logic for API key management."""
 
 import httpx
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.db.models.api_key import ApiKey
 
 
 async def get_key_spend_from_litellm(

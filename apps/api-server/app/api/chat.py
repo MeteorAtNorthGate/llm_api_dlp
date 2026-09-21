@@ -3,7 +3,7 @@
 import asyncio
 import json
 import uuid
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -385,7 +385,7 @@ async def _stream_response(
                 yield "data: [DONE]\n\n"
 
     except httpx.ReadTimeout:
-        yield f"data: {{\"error\": \"Request to LLM timed out\"}}\n\n"
+        yield "data: {\"error\": \"Request to LLM timed out\"}\n\n"
         yield "data: [DONE]\n\n"
 
     finally:

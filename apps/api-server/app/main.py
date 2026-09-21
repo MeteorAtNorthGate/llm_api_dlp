@@ -172,7 +172,7 @@ app.add_middleware(
 
 
 # Include API router
-from app.api.router import api_router
+from app.api.router import api_router  # noqa: E402 — deferred: must load after app/CORS setup
 
 app.include_router(api_router)
 
