@@ -27,8 +27,13 @@ from app.schemas.chat import (
 )
 from app.services.dlp_service import apply_masking
 from app.services.file_service import delete_prefix_sync
-from app.services.model_service import list_models
+from app.services.model_service import (
+    TRANSPORT_RESPONSES,
+    list_models,
+    resolve_transport,
+)
 from app.services.parse_service import build_injection_text
+from app.services.responses_adapter import ResponsesStreamAdapter, extract_completion
 
 router = APIRouter()
 
@@ -47,7 +52,7 @@ async def list_available_models(
 
 
 def _apply_reasoning_params(
-    payload: dict, model: str, reasoning_effort: str
+    payload: dict, model: str, reasoning_effort: str, transport: str
 ) -> None:
     """Apply reasoning/thinking parameters to the LiteLLM payload.
 
@@ -56,11 +61,22 @@ def _apply_reasoning_params(
     This helper writes the provider-canonical format so LiteLLM can
     translate correctly, rather than relying on LiteLLM to guess from a
     top-level ``reasoning_effort`` key.
+
+    The Responses transport is checked *first*, because the request shape
+    differs by endpoint, not by model name — a search model need not be named
+    ``deepseek*``, and ``thinking`` is silently dropped on that endpoint.
     """
     normalized = reasoning_effort.strip().lower()
 
     if not normalized:
         return  # let provider default
+
+    if transport == TRANSPORT_RESPONSES:
+        # ``reasoning.effort`` has no "none" member; omit the field entirely and
+        # let the provider default apply.
+        if normalized != "none":
+            payload["reasoning"] = {"effort": normalized}
+        return
 
     # Detect DeepSeek models (name starts with "deepseek")
     if model.startswith("deepseek"):
@@ -75,6 +91,58 @@ def _apply_reasoning_params(
         # OpenAI / GLM / other providers — pass through
         # LiteLLM handles translation to provider-specific format for these
         payload["reasoning_effort"] = normalized
+
+
+def _build_chat_payload(
+    body: ChatCompletionRequest, messages: list[dict], user_sub: str
+) -> dict:
+    """LiteLLM /v1/chat/completions payload."""
+    payload: dict = {
+        "model": body.model,
+        "messages": messages,
+        "stream": body.stream,
+        "temperature": body.temperature,
+        "user": user_sub,
+    }
+    if body.max_tokens:
+        payload["max_tokens"] = body.max_tokens
+    if body.reasoning_effort:
+        _apply_reasoning_params(
+            payload, body.model, body.reasoning_effort, transport="chat"
+        )
+    return payload
+
+
+def _build_responses_payload(
+    body: ChatCompletionRequest, messages: list[dict], user_sub: str
+) -> dict:
+    """LiteLLM /v1/responses payload.
+
+    ``input`` accepts the same ``[{role, content}, ...]`` array as ``messages``
+    (verified against DeepSeek), so the DLP-masked, file-injected history built
+    above is reused verbatim and in order.
+
+    The web_search tool is attached unconditionally: on this transport the
+    model choice *is* the search switch, so there is nothing to toggle.  Note
+    ``max_output_tokens`` is the Responses spelling — ``max_tokens`` is
+    silently ignored there.
+    """
+    payload: dict = {
+        "model": body.model,
+        "input": messages,
+        "tools": [{"type": "web_search"}],
+        "stream": body.stream,
+        "temperature": body.temperature,
+        "store": False,
+        "user": user_sub,
+    }
+    if body.max_tokens:
+        payload["max_output_tokens"] = body.max_tokens
+    if body.reasoning_effort:
+        _apply_reasoning_params(
+            payload, body.model, body.reasoning_effort, transport=TRANSPORT_RESPONSES
+        )
+    return payload
 
 
 async def _get_or_create_user(
@@ -235,18 +303,24 @@ async def chat_completions(
             })
 
     await session.commit()
-    # Build LiteLLM request payload using DLP-masked + file-injected messages
-    litellm_payload = {
-        "model": body.model,
-        "messages": litellm_messages,
-        "stream": body.stream,
-        "temperature": body.temperature,
-        "user": user.keycloak_sub,
-    }
-    if body.max_tokens:
-        litellm_payload["max_tokens"] = body.max_tokens
-    if body.reasoning_effort:
-        _apply_reasoning_params(litellm_payload, body.model, body.reasoning_effort)
+
+    # Which LiteLLM endpoint this model must be called on.  Models created
+    # through the admin's "DeepSeek (Responses API)" preset land on the
+    # Responses transport, which is the only place DeepSeek's web_search tool
+    # exists — selecting such a model IS the web-search switch.
+    transport = await resolve_transport(body.model)
+
+    # Build LiteLLM request payload using DLP-masked + file-injected messages.
+    # NOTE: DLP masking already happened above, when building litellm_messages
+    # — do not add a second pass here.
+    if transport == TRANSPORT_RESPONSES:
+        litellm_payload = _build_responses_payload(
+            body, litellm_messages, user.keycloak_sub
+        )
+    else:
+        litellm_payload = _build_chat_payload(
+            body, litellm_messages, user.keycloak_sub
+        )
 
     if body.stream:
         return StreamingResponse(
@@ -254,6 +328,7 @@ async def chat_completions(
                 litellm_payload,
                 conversation.id,
                 session,
+                transport=transport,
                 first_user_message=first_user_msg_content,
                 should_generate_title=should_generate_title,
             ),
@@ -266,9 +341,13 @@ async def chat_completions(
         )
     else:
         # Non-streaming: return full response
-        async with httpx.AsyncClient(timeout=300.0) as client:
+        is_responses = transport == TRANSPORT_RESPONSES
+        url = f"{settings.LITELLM_BASE_URL}/v1/responses" if is_responses else (
+            f"{settings.LITELLM_BASE_URL}/v1/chat/completions"
+        )
+        async with httpx.AsyncClient(timeout=900.0 if is_responses else 300.0) as client:
             resp = await client.post(
-                f"{settings.LITELLM_BASE_URL}/v1/chat/completions",
+                url,
                 json=litellm_payload,
                 headers={
                     "Authorization": f"Bearer {settings.LITELLM_MASTER_KEY}",
@@ -284,13 +363,23 @@ async def chat_completions(
             data = resp.json()
 
             # Save assistant response
-            choice = data["choices"][0]
+            if is_responses:
+                content, reasoning, search_meta = extract_completion(data)
+                usage = data.get("usage") or {}
+            else:
+                choice = data["choices"][0]
+                content = choice["message"]["content"] or ""
+                reasoning = choice["message"].get("reasoning_content")
+                search_meta = None
+                usage = data.get("usage") or {}
+
             assistant_msg = Message(
                 conversation_id=conversation.id,
                 role="assistant",
-                content=choice["message"]["content"] or "",
-                reasoning_content=choice["message"].get("reasoning_content"),
-                token_count=data.get("usage", {}).get("total_tokens"),
+                content=content,
+                reasoning_content=reasoning,
+                search_meta=search_meta,
+                token_count=usage.get("total_tokens"),
                 model=data.get("model"),
             )
             session.add(assistant_msg)
@@ -317,11 +406,31 @@ async def chat_completions(
                     )
                 )
 
+            if is_responses:
+                # A Responses body has no `choices`.  Synthesize the
+                # chat-completions shape so callers don't have to know which
+                # transport their model uses — same principle as the streaming
+                # contract, which is normalized for exactly this reason.
+                choices = [
+                    {
+                        "index": 0,
+                        "message": {
+                            "role": "assistant",
+                            "content": content,
+                            "reasoning_content": reasoning or None,
+                        },
+                        "finish_reason": "stop",
+                    }
+                ]
+            else:
+                choices = data.get("choices")
+
             return {
                 "id": str(conversation.id),
                 "model": data.get("model"),
-                "choices": data.get("choices"),
-                "usage": data.get("usage"),
+                "choices": choices,
+                "usage": usage,
+                "search_meta": search_meta,
             }
 
 
@@ -329,20 +438,36 @@ async def _stream_response(
     payload: dict,
     conversation_id: uuid.UUID,
     session: AsyncSession,
+    transport: str = "chat",
     first_user_message: str | None = None,
     should_generate_title: bool = False,
 ) -> AsyncGenerator[str, None]:
-    """Stream SSE events from LiteLLM back to the frontend."""
+    """Stream SSE events from LiteLLM back to the frontend.
+
+    The browser's SSE contract is the chat-completions chunk shape regardless
+    of which upstream API is used; on the Responses transport the events are
+    normalized by :class:`ResponsesStreamAdapter` first.
+    """
     full_content = ""
     full_reasoning = ""
     token_count = None
     model_name = None
+    search_meta = None
+
+    is_responses = transport == TRANSPORT_RESPONSES
+    url = f"{settings.LITELLM_BASE_URL}/v1/responses" if is_responses else (
+        f"{settings.LITELLM_BASE_URL}/v1/chat/completions"
+    )
+    # A search turn thinks, searches several times, then answers — it runs far
+    # longer than a plain completion, so give the responses path more room.
+    timeout = httpx.Timeout(900.0, connect=15.0) if is_responses else 300.0
+    adapter = ResponsesStreamAdapter() if is_responses else None
 
     try:
-        async with httpx.AsyncClient(timeout=300.0) as client:
+        async with httpx.AsyncClient(timeout=timeout) as client:
             async with client.stream(
                 "POST",
-                f"{settings.LITELLM_BASE_URL}/v1/chat/completions",
+                url,
                 json=payload,
                 headers={
                     "Authorization": f"Bearer {settings.LITELLM_MASTER_KEY}",
@@ -356,31 +481,48 @@ async def _stream_response(
                     return
 
                 async for line in response.aiter_lines():
-                    if line.startswith("data: "):
-                        data_str = line[6:]
-                        if data_str == "[DONE]":
-                            break
+                    if not line.startswith("data: "):
+                        continue
+                    data_str = line[6:]
+                    if data_str == "[DONE]":
+                        break
 
-                        try:
-                            chunk = json.loads(data_str)
-                            choices = chunk.get("choices", [])
-                            if choices:
-                                delta = choices[0].get("delta", {})
-                                if delta.get("content"):
-                                    full_content += delta["content"]
-                                if delta.get("reasoning_content"):
-                                    full_reasoning += delta["reasoning_content"]
+                    try:
+                        chunk = json.loads(data_str)
+                    except json.JSONDecodeError:
+                        continue
 
-                            # Capture usage/token info from final chunk
-                            if chunk.get("usage"):
-                                token_count = chunk["usage"].get("total_tokens")
-                            if chunk.get("model"):
-                                model_name = chunk["model"]
+                    if adapter is not None:
+                        frames = adapter.feed(chunk)
+                        for frame in frames:
+                            # json.dumps escapes control characters, so a
+                            # synthesized frame can never inject a raw newline
+                            # into the SSE stream.
+                            yield f"data: {json.dumps(frame, ensure_ascii=False)}\n\n"
+                        continue
 
-                        except json.JSONDecodeError:
-                            pass
+                    choices = chunk.get("choices", [])
+                    if choices:
+                        delta = choices[0].get("delta", {})
+                        if delta.get("content"):
+                            full_content += delta["content"]
+                        if delta.get("reasoning_content"):
+                            full_reasoning += delta["reasoning_content"]
 
-                        yield f"data: {data_str}\n\n"
+                    # Capture usage/token info from final chunk
+                    if chunk.get("usage"):
+                        token_count = chunk["usage"].get("total_tokens")
+                    if chunk.get("model"):
+                        model_name = chunk["model"]
+
+                    yield f"data: {data_str}\n\n"
+
+                if adapter is not None:
+                    full_content = adapter.full_content
+                    full_reasoning = adapter.full_reasoning
+                    token_count = adapter.token_count
+                    model_name = adapter.model_name
+                    search_meta = adapter.as_search_meta()
 
                 yield "data: [DONE]\n\n"
 
@@ -389,14 +531,17 @@ async def _stream_response(
         yield "data: [DONE]\n\n"
 
     finally:
-        # Save assistant message to DB
-        if full_content or full_reasoning:
+        # Save assistant message to DB.  A turn that only searched and then
+        # errored still has a search trace worth keeping, hence search_meta in
+        # the guard.
+        if full_content or full_reasoning or search_meta:
             try:
                 assistant_msg = Message(
                     conversation_id=conversation_id,
                     role="assistant",
                     content=full_content,
                     reasoning_content=full_reasoning or None,
+                    search_meta=search_meta,
                     token_count=token_count,
                     model=model_name,
                 )
@@ -571,6 +716,7 @@ async def get_conversation(
                 content=m.content,
                 content_parts=m.content_parts,
                 reasoning_content=m.reasoning_content,
+                search_meta=m.search_meta,
                 attachments=[
                     AttachmentDetail.model_validate(att)
                     for att in attachments_by_message.get(m.id, [])

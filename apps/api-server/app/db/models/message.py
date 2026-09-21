@@ -36,6 +36,14 @@ class Message(Base):
         Text, nullable=True, default=None
     )
 
+    # DeepSeek web-search trace for this turn, when the model ran on the
+    # Responses transport:
+    #   {"queries": ["..."], "sources": ["https://..."], "count": 3}
+    # NULL for non-search turns and every message predating the feature.
+    search_meta: Mapped[dict | None] = mapped_column(
+        JSONB, nullable=True, default=None
+    )
+
     # Token usage tracking (for DLP verification — masked vs unmasked should match)
     token_count: Mapped[int | None] = mapped_column(nullable=True)
     model: Mapped[str | None] = mapped_column(String(128), nullable=True)

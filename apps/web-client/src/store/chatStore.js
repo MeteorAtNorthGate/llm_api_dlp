@@ -3,6 +3,20 @@
 import { create } from 'zustand';
 import { chatApi, filesApi } from '../services/api';
 
+/**
+ * Trim the live search state down to what gets persisted, or undefined when the
+ * turn did not search. Mirrors the backend's messages.search_meta shape so a
+ * freshly-streamed message and one replayed from the API look identical.
+ */
+const toSearchMeta = (search) => {
+  if (!search) return undefined;
+  const queries = search.queries || [];
+  const sources = search.sources || [];
+  const count = search.count || 0;
+  if (!queries.length && !sources.length && !count) return undefined;
+  return { queries, sources, count };
+};
+
 export const useChatStore = create((set, get) => ({
   conversations: [],
   activeConversationId: null,
@@ -11,6 +25,11 @@ export const useChatStore = create((set, get) => ({
   isUploading: false,
   streamContent: '',
   streamReasoningContent: '',
+  // Cumulative web-search state for the in-flight turn, or null. Backend sends
+  // the whole state each time (see responses_adapter.search_frame), so this is
+  // assigned wholesale rather than accumulated here.
+  streamSearch: null,
+  streamError: null,
   abortController: null,  // AbortController for cancelling in-flight stream
   availableModels: [],
   selectedModel: 'deepseek-v4-flash',
@@ -38,16 +57,17 @@ export const useChatStore = create((set, get) => ({
 
   // Cancel the in-flight streaming request and save partial content.
   stopStreaming: () => {
-    const { abortController, streamContent, streamReasoningContent } = get();
+    const { abortController, streamContent, streamReasoningContent, streamSearch } = get();
     if (abortController) {
       abortController.abort();
     }
     // Save whatever content has been streamed so far as an assistant message.
-    if (streamContent || streamReasoningContent) {
+    if (streamContent || streamReasoningContent || streamSearch) {
       const assistantMsg = {
         role: 'assistant',
         content: streamContent,
         reasoning_content: streamReasoningContent || undefined,
+        search_meta: toSearchMeta(streamSearch),
         id: Date.now().toString(),
       };
       set((state) => ({
@@ -55,6 +75,7 @@ export const useChatStore = create((set, get) => ({
         isStreaming: false,
         streamContent: '',
         streamReasoningContent: '',
+        streamSearch: null,
         abortController: null,
         isUploading: false,
       }));
@@ -63,6 +84,7 @@ export const useChatStore = create((set, get) => ({
         isStreaming: false,
         streamContent: '',
         streamReasoningContent: '',
+        streamSearch: null,
         abortController: null,
         isUploading: false,
       });
@@ -87,6 +109,7 @@ export const useChatStore = create((set, get) => ({
       const messages = (conv.messages || []).map((m) => ({
         ...m,
         reasoning_content: m.reasoning_content || '',
+        search_meta: m.search_meta || null,
         attachments: m.attachments || [],
       }));
       set({ messages, activeConversationId: id });
@@ -112,6 +135,8 @@ export const useChatStore = create((set, get) => ({
         messages: [],
         streamContent: '',
         streamReasoningContent: '',
+        streamSearch: null,
+        streamError: null,
         isStreaming: false,
         isUploading: false,
         abortController: null,
@@ -127,6 +152,8 @@ export const useChatStore = create((set, get) => ({
         messages: [],
         streamContent: '',
         streamReasoningContent: '',
+        streamSearch: null,
+        streamError: null,
         isStreaming: false,
         isUploading: false,
         abortController: null,
@@ -179,7 +206,15 @@ export const useChatStore = create((set, get) => ({
     };
     const updatedMessages = [...messages, userMsg];
     const controller = new AbortController();
-    set({ messages: updatedMessages, isStreaming: true, streamContent: '', streamReasoningContent: '', abortController: controller });
+    set({
+      messages: updatedMessages,
+      isStreaming: true,
+      streamContent: '',
+      streamReasoningContent: '',
+      streamSearch: null,
+      streamError: null,
+      abortController: controller,
+    });
 
     try {
       const payload = {
@@ -209,6 +244,8 @@ export const useChatStore = create((set, get) => ({
       const decoder = new TextDecoder();
       let fullContent = '';
       let fullReasoning = '';
+      let lastSearch = null;
+      let lastError = null;
       let buffer = '';
 
       while (true) {
@@ -226,6 +263,24 @@ export const useChatStore = create((set, get) => ({
 
             try {
               const parsed = JSON.parse(data);
+
+              // Backend error frames. These used to be swallowed silently,
+              // which is especially bad for web search: a model whose
+              // Responses deployment is misconfigured would just return an
+              // empty bubble with no explanation.
+              if (parsed.error) {
+                lastError = parsed.error;
+                set({ streamError: lastError });
+                continue;
+              }
+
+              // Web-search state, sent whole each time.
+              if (parsed.search) {
+                lastSearch = parsed.search;
+                set({ streamSearch: parsed.search });
+                continue;
+              }
+
               const delta = parsed.choices?.[0]?.delta;
               if (delta?.content) {
                 fullContent += delta.content;
@@ -244,11 +299,15 @@ export const useChatStore = create((set, get) => ({
         }
       }
 
-      // Add assistant message
+      // Add assistant message.  A backend error frame has to ride along on the
+      // message — clearing only the live `streamError` would make the banner
+      // flash during the turn and then vanish, leaving an empty bubble.
       const assistantMsg = {
         role: 'assistant',
         content: fullContent,
         reasoning_content: fullReasoning || undefined,
+        search_meta: toSearchMeta(lastSearch),
+        error: lastError || undefined,
         id: (Date.now() + 1).toString(),
       };
 
@@ -257,6 +316,8 @@ export const useChatStore = create((set, get) => ({
         isStreaming: false,
         streamContent: '',
         streamReasoningContent: '',
+        streamSearch: null,
+        streamError: null,
         abortController: null,
       }));
 
@@ -273,7 +334,13 @@ export const useChatStore = create((set, get) => ({
       // Silently ignore AbortError — stopStreaming already handled it.
       if (err instanceof DOMException && err.name === 'AbortError') return;
       console.error('Failed to send message', err);
-      set({ isStreaming: false, streamContent: '', streamReasoningContent: '', abortController: null });
+      set({
+        isStreaming: false,
+        streamContent: '',
+        streamReasoningContent: '',
+        streamSearch: null,
+        abortController: null,
+      });
       set((state) => ({
         messages: [
           ...state.messages,

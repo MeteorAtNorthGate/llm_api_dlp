@@ -14,6 +14,8 @@ export default function ChatPage() {
     isStreaming,
     streamContent,
     streamReasoningContent,
+    streamSearch,
+    streamError,
     availableModels,
     selectedModel,
     reasoningEffort,
@@ -74,7 +76,7 @@ export default function ChatPage() {
     if (isNearBottomRef.current) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
     }
-  }, [messages, streamContent]);
+  }, [messages, streamContent, streamReasoningContent, streamSearch, streamError]);
 
   const handleSend = (content, files) => {
     sendMessage(content, files);
@@ -113,20 +115,30 @@ export default function ChatPage() {
             />
           ))}
 
-          {/* Streaming message */}
-          {isStreaming && (streamContent || streamReasoningContent) && (
+          {/* Streaming message. `streamSearch` is part of the guard because a
+              search turn emits no text for a long time — without it the
+              status bar would be invisible for the whole search phase. */}
+          {isStreaming &&
+            (streamContent || streamReasoningContent || streamSearch || streamError) && (
             <MessageBubble
               message={{
                 role: 'assistant',
                 content: streamContent,
                 reasoning_content: streamReasoningContent,
+                search: streamSearch,
+                error: streamError,
                 id: '__stream',
               }}
             />
           )}
 
-          {/* Empty streaming placeholder */}
-          {isStreaming && !streamContent && (
+          {/* Empty streaming placeholder. Excludes the cases the bubble above
+              already covers, so the dots never render alongside it. */}
+          {isStreaming &&
+            !streamContent &&
+            !streamReasoningContent &&
+            !streamSearch &&
+            !streamError && (
             <div className="chat chat-start">
               <div className="chat-bubble chat-bubble-neutral">
                 <span className="loading loading-dots loading-md" />

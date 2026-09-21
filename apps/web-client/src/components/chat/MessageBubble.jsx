@@ -53,6 +53,23 @@ export default function MessageBubble({ message, editable = false, onEditResend 
   const [showThinking, setShowThinking] = useState(false);
   const hasReasoning = !isUser && !!message.reasoning_content;
 
+  // Web-search trace. A live streamed turn carries it on `search` (with an
+  // `in_progress` flag); a replayed one carries the persisted `search_meta`.
+  const [showSearch, setShowSearch] = useState(false);
+  const search = isUser ? null : (message.search ?? message.search_meta);
+  const searchInProgress = !!search?.in_progress;
+  const searchQueries = search?.queries || [];
+  const searchSources = search?.sources || [];
+  const searchCount = search?.count || 0;
+  const hasSearch =
+    !!search &&
+    (searchInProgress ||
+      searchQueries.length > 0 ||
+      searchSources.length > 0 ||
+      searchCount > 0);
+
+  const streamError = isUser ? null : message.error;
+
   // ── In-place editing state ──
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState('');
@@ -140,6 +157,90 @@ export default function MessageBubble({ message, editable = false, onEditResend 
                 )}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Stream failure — the backend's error frames used to be dropped on
+            the floor, leaving an empty bubble with no explanation. */}
+        {streamError && (
+          <div className="mb-3 px-3 py-2 text-xs rounded-lg border border-error/40 bg-error/10 text-error break-all">
+            {t('chat.search.error')}: {streamError}
+          </div>
+        )}
+
+        {/* Web-search trace (assistant messages on the Responses transport).
+            Streamed turns carry it on `search`; replayed ones on `search_meta`. */}
+        {hasSearch && (
+          <div className="mb-3 border border-base-content/20 rounded-lg overflow-hidden">
+            <button
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-xs font-medium bg-base-content/10 hover:bg-base-content/15 transition-colors"
+              onClick={() => setShowSearch(!showSearch)}
+            >
+              <span className={`text-[10px] transition-transform ${showSearch ? 'rotate-90' : ''}`}>
+                ▶
+              </span>
+              {searchInProgress ? (
+                <>
+                  <span className="loading loading-spinner loading-xs" />
+                  <span>{t('chat.search.searching')}</span>
+                </>
+              ) : (
+                <>
+                  <span>🔍</span>
+                  <span>{t('chat.search.searched', { n: searchCount })}</span>
+                  {searchCount > 0 && (
+                    <span className="opacity-50">
+                      · {t('chat.search.queries', { n: searchQueries.length })}
+                    </span>
+                  )}
+                  {searchSources.length > 0 && (
+                    <span className="opacity-50">
+                      · {t('chat.search.pages', { n: searchSources.length })}
+                    </span>
+                  )}
+                </>
+              )}
+              <span className="opacity-50 ml-auto">
+                {showSearch ? t('chat.search.hide') : t('chat.search.show')}
+              </span>
+            </button>
+            {showSearch && (
+              <div className="px-3 py-2 text-xs border-t border-base-content/20 max-h-[300px] overflow-y-auto space-y-2">
+                {searchQueries.length > 0 && (
+                  <div>
+                    <div className="font-medium opacity-60 mb-1">
+                      {t('chat.search.queriesTitle')}
+                    </div>
+                    <ul className="space-y-0.5">
+                      {searchQueries.map((q) => (
+                        <li key={q} className="opacity-70 break-all">· {q}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {searchSources.length > 0 && (
+                  <div>
+                    <div className="font-medium opacity-60 mb-1">
+                      {t('chat.search.sourcesTitle')}
+                    </div>
+                    <ul className="space-y-0.5">
+                      {searchSources.map((url) => (
+                        <li key={url}>
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="link link-primary opacity-80 break-all"
+                          >
+                            {url}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

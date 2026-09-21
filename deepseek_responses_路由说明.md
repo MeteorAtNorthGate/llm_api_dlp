@@ -98,13 +98,50 @@ DeepSeek /v1/responses → 真正执行 web_search
 | 为何这样选 | `/anthropic` 只认裸模型名，前缀位空着，适配器信号只能靠 `custom_llm_provider` 硬覆盖 | 前缀位可用，`openai/` 本身就携带适配器信号 |
 | 是否对抗 LiteLLM 前缀语义 | 是（所以叫"特殊链路"） | 否（顺着走） |
 
+## web chat 的接入方式（模型即开关）
+
+网页端不需要任何新控件：**选中哪个模型就决定了走哪条传输协议**。
+`app/services/model_service.py` 的 `resolve_transport()` 按 `model_info.admin_provider`
+把模型映射到 `chat` / `responses`，`chat.py` 据此换端点和请求体形状。
+旧模型没有这个字段 → 一律 `chat`，行为完全不变。
+
+对应地，`chat.py` 的 `_apply_reasoning_params()` **按 transport 分支而不是按模型名前缀**：
+responses 面发 `reasoning: {effort}`（`thinking` 在那个面上会被静默丢弃）。
+这一条是关键——搜索模型不必叫 `deepseek*`。
+
+### 浏览器的 SSE 契约没有变
+
+LiteLLM 的 Responses 事件**不会**原样转给浏览器。`app/services/responses_adapter.py`
+把 Responses 事件归一化成前端本来就认识的 chat-completions 形状，只新增一个 `search` 帧：
+
+```
+{"choices":[{"delta":{"content":"..."}}]}                ← 与原来逐字节一致
+{"choices":[{"delta":{"reasoning_content":"..."}}]}      ← 同上
+{"search":{"queries":[...],"sources":[...],"count":N,"in_progress":bool}}   ← 新增，累计下发
+{"error":"..."}
+data: [DONE]
+```
+
+`search` 帧每次都发**全量**状态而非增量，前端整个赋值，丢帧或重复都不会让 UI 失步。
+
+### 实测得到的两个非显然点
+
+1. **推理 delta 的事件名是 `response.reasoning_text.delta`**，不是 OpenAI 规范的
+   `response.reasoning_summary_text.delta`。照文档写解析器会**静默丢掉全部推理**。
+   （桥接路径反而用 `reasoning_summary_text` 那个拼写，所以适配器两个都认。）
+2. **搜索关键词和打开的网页在 `response.output_item.done` 的 `item.action` 里**，
+   `response.web_search_call.*` 那几个事件**不带** `action`。
+   `action.type` 有两种：`search`（`queries`）和 `open_page`（`url`）——所以 UI 能给出
+   可点击的来源链接，不只是关键词。两种形状都带一个必须剥掉的内部标记：
+   search 末尾会多一个 `ws_call_id=...` 的假关键词，URL 上带 `#ws_call_id=...` 片段。
+
+一次搜索会产生**多个** `reasoning` item 与 `web_search_call` item 交替出现，
+适配器在 reasoning item 之间补 `\n\n`，否则模型的多段思考会连成一句。
+
 ## 已知陷阱
 
-1. **不要直接替换现有的 `deepseek` 模型。** `apps/api-server/app/api/chat.py` 的
-   `_apply_reasoning_params()` 用 `body.model.startswith("deepseek")` 决定发
-   `thinking` 还是 `reasoning_effort`，而 OpenAI 适配器不认 `thinking`（会被
-   `drop_params` 静默丢掉）。web chat 那条链路请继续用原来的 `deepseek` 模型，
-   本预设**平行新增**给 Responses API 客户端用。
+1. **一个 turn 里模型可以搜很多次。** 实测单次提问触发了 7 次搜索、消耗 4 万 input tokens
+   （不联网仅 87）。模型即开关意味着选中即这个开销。
 
 2. **计费记 0。** `openai/deepseek-v4-pro` 在 OpenAI 价目表里查不到，
    `LiteLLM_SpendLogs.spend` 会是 0。平台目前只按 token 数统计，所以无影响；
@@ -115,6 +152,36 @@ DeepSeek /v1/responses → 真正执行 web_search
 3. **依赖两个协议面足够同构。** 若 DeepSeek 日后在 Responses 面上加入 OpenAI 没有的
    字段，OpenAI 适配器的 pydantic 模型可能解析失败。真到那天，上游 #35648 落地后
    切回原生 provider 即可。
+
+4. **DLP：掩码生效，且还原是被刻意否决的——不要"修"它。** 这是本次排查的副产物，
+   记清楚免得后人好心改坏。
+
+   **现状**：掩码只由 api-server 做（`chat.py` 构建 `litellm_messages` 时调
+   `apply_masking`）。用户自己的消息气泡显示原文（入库存 `msg.content` 原文，掩码只作用于
+   发给 LLM 的 payload），所以**往外发的内容是干净的，而模型回答里回显的敏感信息会保持
+   `██████` 形状**——实测：发「请原样重复：13812345678」，模型回答就是 `███████████`。
+
+   **这是产品决策，不是缺陷。** 还原（`restore_masking`）刻意不启用，两个理由：
+   1. **还原会让"降级过的回答"看起来正常**——模型是在 `███` 上推理的，它没看到真实值，
+      给出的内容必然是泛化的；换回原文只是让答案表面上通顺，具有误导性。
+   2. **还原会让掩码对用户完全静默**——用户永远不知道自己的 PII 被拦下了，也就学不会
+      别往对话框里贴身份证号。可见的 `███` 本身就是 DLP 的信号。
+
+   **因此**：`dlp_service.restore_masking`（api-server 侧，零调用）和
+   `apps/dlp-plugin/custom_logger.py` 的 post-hook 都**不要接上**。插件本身另外还完全没在
+   跑（`config.yaml` 里 `callbacks:` 是注释的、两个 compose 都没挂载它、容器里没这两个
+   文件，**而且**它用的方法名 `async_pre_api_call` / `async_post_api_call` 在 LiteLLM
+   v1.87.1 里根本不存在）——但即使这些全部"修好"，也不应该启用它的还原步骤。
+
+   **已知缺口**：用二级 key 直接打 LiteLLM 的请求不经过 api-server，因此**完全没有掩码**。
+   目前已确认该入口对大多数员工不开放，故暂不处理。
+
+   含义：**用二级 key 直接打 LiteLLM 的用户没有任何 DLP 掩码**（api-server 那条路径
+   仍然在 `chat.py` 里正常掩码）。这是既有问题，与本预设无关，但不要以为网关层有兜底。
+
+   顺带一提，Responses 面的载荷形状和 chat 面不同（`input` 而不是 `messages`，
+   `output[].content[].text` 而不是 `choices[].message.content`），将来真要补网关层
+   DLP，得按这个形状写钩子。
 
 ## 验证方法
 

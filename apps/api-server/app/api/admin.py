@@ -14,6 +14,7 @@ from app.core.config import settings
 from app.core.security import require_admin as _require_admin
 from app.db.models.platform_setting import PlatformSetting
 from app.db.session import get_session
+from app.services.model_service import invalidate_model_cache
 
 router = APIRouter()
 
@@ -77,6 +78,9 @@ PROVIDER_CUSTOM_LLM_PROVIDER: dict[str, str] = {
 }
 
 # Provider → canonical cost-map key prefix (model_info.key)
+# NOTE: the `deepseek_responses` key above must match RESPONSES_PROVIDER in
+# app/services/model_service.py — that is where the read side maps a provider
+# to the LiteLLM endpoint the api-server should call.
 # Determines WHICH provider's entry LiteLLM looks up in its
 # model_prices_and_context_window.json for context-window / capability
 # metadata.  Separate from custom_llm_provider — this is read-only
@@ -277,6 +281,9 @@ async def add_model(body: ModelAddRequest, user: dict = Depends(_require_admin))
                 detail=f"LiteLLM model creation failed: {resp.text}",
             )
 
+    # Otherwise the new model would keep resolving to its old transport for up
+    # to the cache TTL — a search model that silently behaves as non-search.
+    invalidate_model_cache()
     return {"status": "created", "model_name": body.model_name}
 
 
@@ -333,6 +340,7 @@ async def update_model(
                 detail=f"LiteLLM model update failed: {resp.text}",
             )
 
+    invalidate_model_cache()
     return {"status": "updated", "model_id": model_id}
 
 
@@ -381,6 +389,8 @@ async def delete_model(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail=f"LiteLLM model deletion failed: {resp.text}",
             )
+
+    invalidate_model_cache()
 
 
 # ── Platform Settings ──────────────────────────────────────────────────

@@ -67,6 +67,7 @@ class MessageDetail(BaseModel):
     content: str
     content_parts: list[dict] | None = None
     reasoning_content: str | None = None
+    search_meta: dict | None = None
     attachments: list[AttachmentDetail] = []
     token_count: int | None = None
     model: str | None = None
