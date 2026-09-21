@@ -95,6 +95,7 @@ desktop/inspect_edge_agent/riber/riber_csv_agent_config.json
 
 #sketch
 草稿纸.*
+temp*.sh
 
 #Agents
 .codex
