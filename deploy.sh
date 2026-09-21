@@ -65,7 +65,9 @@ scp $SSH_OPTS $TAR_NAME $COMPOSE_CLOUD $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/inf
 echo "📁       上传配置文件..."
 ssh $SSH_OPTS $REMOTE_USER@$REMOTE_HOST "mkdir -p $REMOTE_DIR/infra/keycloak $REMOTE_DIR/infra/litellm"
 scp $SSH_OPTS infra/.env.cloud $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/infra/ || echo "⚠️  .env.cloud 不存在，请先创建"
-scp $SSH_OPTS -r infra/keycloak/llm-dlp-realm.json $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/infra/keycloak/ || true
+# 注意别只传 realm json：keycloak-setup 容器挂的是 setup-ldap.py，漏传的话
+# 云端会挂到一个不存在的文件（docker 会创建成目录），容器起不来。
+scp $SSH_OPTS -r infra/keycloak/llm-dlp-realm.json infra/keycloak/setup-ldap.py $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/infra/keycloak/ || true
 scp $SSH_OPTS -r infra/litellm/config.yaml $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/infra/litellm/ || true
 
 # --- 云端部署 ---

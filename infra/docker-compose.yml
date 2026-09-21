@@ -71,7 +71,10 @@ services:
     image: python:3.14-slim
     container_name: llm-dlp-keycloak-setup
     restart: "no"
-    entrypoint: ["/bin/sh", "-c", "apk add --no-cache curl && /scripts/setup-ldap.sh"]
+    # 纯 python3：基础镜像 python:3.14-slim 没有 curl（也搬不走 apk），
+    # 运行时装包会把「连本机 Keycloak」变成依赖公网软件源，所以脚本只用标准库。
+    # 详见 infra/keycloak/setup-ldap.py 顶部注释。
+    entrypoint: ["python3", "/scripts/setup-ldap.py"]
     environment:
       KEYCLOAK_URL: http://keycloak:8080
       KEYCLOAK_ADMIN: admin
@@ -84,8 +87,16 @@ services:
       LDAP_BIND_CREDENTIALS: ${LDAP_BIND_CREDENTIALS:-}
       LDAP_USERS_DN: ${LDAP_USERS_DN:-}
       LDAP_VENDOR: ${LDAP_VENDOR:-ad}
+      # 其余可选参数：脚本里有默认值，但必须在这里透传，否则在 .env.cloud 里
+      # 设了也不会生效（env_file 不会自动进容器）
+      LDAP_USERNAME_ATTR: ${LDAP_USERNAME_ATTR:-sAMAccountName}
+      LDAP_RDN_ATTR: ${LDAP_RDN_ATTR:-sAMAccountName}
+      LDAP_UUID_ATTR: ${LDAP_UUID_ATTR:-objectGUID}
+      LDAP_FILTER: ${LDAP_FILTER:-}
+      LDAP_BATCH_SIZE: ${LDAP_BATCH_SIZE:-1000}
+      LDAP_USE_TRUSTSTORE_SPI: ${LDAP_USE_TRUSTSTORE_SPI:-false}
     volumes:
-      - ./keycloak/setup-ldap.sh:/scripts/setup-ldap.sh:ro
+      - ./keycloak/setup-ldap.py:/scripts/setup-ldap.py:ro
     depends_on:
       keycloak:
         condition: service_started
