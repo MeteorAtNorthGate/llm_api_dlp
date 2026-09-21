@@ -17,6 +17,13 @@ SSH_OPTS="-o ControlMaster=auto -o ControlPath=/tmp/ssh-deploy-$$-%r@%h:%p -o Co
 # 设置错误即停止
 set -e
 
+# --- 构建期代理 ---
+# 代理配置在 infra/docker-compose.yml 的 x-build-proxy 里；这一步只负责探活，
+# 免得代理没起来时构建静默卡死在 RUN npm/pip install 上（不报错、不退出，最难查）。
+#   BUILD_PROXY=off ./deploy.sh   直连构建
+#   HTTPS_PROXY=http://... ./deploy.sh   换代理地址
+. infra/build-proxy.sh || exit 1
+
 # --- 本地准备工作 ---
 
 echo "📦 [1/7] 确保外部依赖镜像已缓存（本地已有则不更新）..."

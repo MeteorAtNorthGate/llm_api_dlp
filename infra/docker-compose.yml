@@ -1,3 +1,29 @@
+# 构建期代理 —— 详见 D:\Data_Cache\gd\clash相关\WSL2下Docker构建走Windows代理.md
+#
+# WSL2 下代理跑在 Windows 侧（127.0.0.1:7890），构建容器要用上它，两条缺一不可：
+#   network: host —— 容器里的 127.0.0.1 才指向 WSL/Windows（默认 bridge 下是容器自己，
+#                    表现为 Connection refused）
+#   args          —— 把代理变量送进构建容器（宿主机 shell 里 export 对构建容器无效，
+#                    docker build 是客户端，执行 Dockerfile 的是 dockerd）
+#
+# 只在构建阶段生效，不会残留在镜像运行环境里（docker inspect 确认过），
+# 所以云端容器不会拿着 127.0.0.1:7890 去连外网。
+#
+# 大小写都传：经典构建器（DOCKER_BUILDKIT=0，三个 deploy 脚本都强制用它）只会设传入的键，
+# 不像 BuildKit 会自动补小写变体；而 apt 这类工具只认小写 http_proxy。
+# 用 YAML 别名保证两个写法同源，避免只改一处导致两条路径代理不一致。
+#
+# 值优先取环境变量，取不到才用默认值；deploy 脚本会先跑 infra/build-proxy.sh 探活。
+x-build-proxy: &build-proxy
+  network: host
+  args:
+    HTTP_PROXY: &proxy-url "${HTTP_PROXY-http://127.0.0.1:7890}"
+    HTTPS_PROXY: &proxy-url-tls "${HTTPS_PROXY-http://127.0.0.1:7890}"
+    NO_PROXY: &proxy-no-proxy "${NO_PROXY-localhost,127.0.0.1,::1}"
+    http_proxy: *proxy-url
+    https_proxy: *proxy-url-tls
+    no_proxy: *proxy-no-proxy
+
 services:
   postgres:
     image: postgres:17-alpine
@@ -109,6 +135,7 @@ services:
     build:
       context: ../apps/api-server
       dockerfile: Dockerfile
+      <<: *build-proxy
     image: llm-dlp-api:latest
     container_name: llm-dlp-api
     restart: unless-stopped
@@ -147,6 +174,7 @@ services:
     build:
       context: ../apps/web-client
       dockerfile: Dockerfile
+      <<: *build-proxy
     image: llm-dlp-web:latest
     container_name: llm-dlp-web
     restart: unless-stopped

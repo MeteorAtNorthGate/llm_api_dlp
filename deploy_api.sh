@@ -15,6 +15,13 @@ SSH_OPTS="-o ControlMaster=auto -o ControlPath=/tmp/ssh-deploy-$$-%r@%h:%p -o Co
 # 设置错误即停止
 set -e
 
+# --- 构建期代理 ---
+# 代理配置在 infra/docker-compose.yml 的 x-build-proxy 里；这一步只负责探活，
+# 免得代理没起来时构建静默卡死在 RUN pip install 上（不报错、不退出，最难查）。
+#   BUILD_PROXY=off ./deploy_api.sh   直连构建
+#   HTTPS_PROXY=http://... ./deploy_api.sh   换代理地址
+. infra/build-proxy.sh || exit 1
+
 echo "📦 [1/5] 开始构建 API Server Docker 镜像..."
 DOCKER_BUILDKIT=0 docker compose -f $COMPOSE_LOCAL build api-server
 

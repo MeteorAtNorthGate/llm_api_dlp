@@ -15,6 +15,13 @@ SSH_OPTS="-o ControlMaster=auto -o ControlPath=/tmp/ssh-deploy-$$-%r@%h:%p -o Co
 # 设置错误即停止
 set -e
 
+# --- 构建期代理 ---
+# 代理配置在 infra/docker-compose.yml 的 x-build-proxy 里；这一步只负责探活，
+# 免得代理没起来时构建静默卡死在 RUN npm install 上（不报错、不退出，最难查）。
+#   BUILD_PROXY=off ./deploy_web.sh   直连构建
+#   HTTPS_PROXY=http://... ./deploy_web.sh   换代理地址
+. infra/build-proxy.sh || exit 1
+
 echo "📝 [1/6] 注入构建变量..."
 VITE_KC_URL=$(grep -oP '^VITE_KEYCLOAK_URL=\K.*' infra/.env.cloud 2>/dev/null || echo "http://localhost:8080")
 echo "VITE_GIT_HASH=$(git rev-parse --short HEAD)" > apps/web-client/.env.local

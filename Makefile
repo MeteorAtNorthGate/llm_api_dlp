@@ -19,7 +19,7 @@ dev-web:        ## Start Vite dev server with HMR (port 5173)
 	cd apps/web-client && pnpm dev
 
 build:          ## Build all Docker images (local)
-	DOCKER_BUILDKIT=0 docker compose -f infra/docker-compose.yml build
+	. ./infra/build-proxy.sh && DOCKER_BUILDKIT=0 docker compose -f infra/docker-compose.yml build
 
 up:             ## Start all services locally via Docker Compose
 	DOCKER_BUILDKIT=0 docker compose -f infra/docker-compose.yml up -d
@@ -33,7 +33,7 @@ ensure-images:  ## 补齐缺失的第三方镜像（本地已有的同 tag 镜�
 	infra/ensure-images.sh $(EXTERNAL_IMAGES)
 
 build-cloud:    ## Build images and package for cloud (output: infra/images.tar.gz)
-	DOCKER_BUILDKIT=0 docker compose -f infra/docker-compose.yml build
+	. ./infra/build-proxy.sh && DOCKER_BUILDKIT=0 docker compose -f infra/docker-compose.yml build
 	infra/ensure-images.sh $(EXTERNAL_IMAGES)
 	docker save llm-dlp-api:latest llm-dlp-web:latest $(EXTERNAL_IMAGES) -o infra/images.tar.gz
 	@echo "✓ infra/images.tar.gz ready for transfer"
