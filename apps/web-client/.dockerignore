@@ -1,0 +1,12 @@
+# 保持构建上下文小：不带这个文件的话，每次构建都要把 221MB 的 node_modules
+# 发给 daemon，而且 `COPY . .` 会拿宿主机的依赖盖掉容器里刚装好的那一份 ——
+# pnpm 的 node_modules 是带符号链接的 .pnpm store，混进宿主机的副本更容易出怪问题。
+node_modules/
+dist/
+
+# 编辑器 / 构建缓存
+.vite/
+*.log
+
+# 注意：不要忽略 .env.local —— deploy_web.sh 会写入 VITE_GIT_HASH 与
+# VITE_KEYCLOAK_URL，vite build 靠它把版本号和 Keycloak 地址打进前端产物。
