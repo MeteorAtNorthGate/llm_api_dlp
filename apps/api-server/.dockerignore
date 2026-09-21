@@ -1,0 +1,9 @@
+# Keep the build context small: `COPY . .` would otherwise pull the developer's
+# local virtualenv (hundreds of MB) into the image.
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.env
+.env.*
