@@ -17,13 +17,13 @@ vi.mock('../services/api', () => ({ chatApi, filesApi: {} }));
 import { useChatStore } from './chatStore';
 
 /** A minimal stand-in for the fetch Response the store reads the SSE from. */
-function sseResponse(frames) {
+function sseResponse(frames, headers = {}) {
   const body =
     frames.map((f) => `data: ${JSON.stringify(f)}\n\n`).join('') + 'data: [DONE]\n\n';
   const bytes = new TextEncoder().encode(body);
   let sent = false;
   return {
-    headers: { get: () => null },
+    headers: { get: (name) => headers[name] ?? null },
     body: {
       getReader: () => ({
         read: async () => {
@@ -59,6 +59,7 @@ describe('chatStore — Responses API frames', () => {
       streamReasoningContent: '',
       streamSearch: null,
       streamError: null,
+      dlpNotice: null,
     });
   });
 
@@ -113,6 +114,26 @@ describe('chatStore — Responses API frames', () => {
     // flashes during the turn and disappears when it finishes.
     expect(lastAssistant().error).toBe('LiteLLM returned 400: bad tool');
     expect(useChatStore.getState().streamError).toBeNull();
+  });
+
+  it('raises a DLP notice when the backend reports masking', async () => {
+    chatApi.completions.mockResolvedValue(
+      sseResponse([textFrame('ok')], { 'X-DLP-Masked': '3' })
+    );
+
+    await useChatStore.getState().sendMessage('我的手机号是 13812345678');
+
+    expect(useChatStore.getState().dlpNotice?.count).toBe(3);
+  });
+
+  it('raises no DLP notice when nothing was masked', async () => {
+    chatApi.completions.mockResolvedValue(
+      sseResponse([textFrame('ok')], { 'X-DLP-Masked': '0' })
+    );
+
+    await useChatStore.getState().sendMessage('说一句你好');
+
+    expect(useChatStore.getState().dlpNotice).toBeNull();
   });
 
   it('does not treat a search-only frame as message content', async () => {

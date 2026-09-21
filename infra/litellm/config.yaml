@@ -13,9 +13,12 @@ general_settings:
   database_url: os.environ/DATABASE_URL
 
 litellm_settings:
-  # callbacks are disabled until DLP plugin is mounted into container
-  # callbacks:
-  #   - custom_logger
+  # No LiteLLM-side callbacks. DLP masking is done in the api-server
+  # (app/services/dlp_service.py) before the payload ever reaches this proxy.
+  # The old `apps/dlp-plugin/` was deleted — it never ran (nothing mounted it,
+  # and the hook names it defined do not exist in LiteLLM v1.87.1), and its
+  # post-call unmasking step was explicitly rejected as a product decision.
+  # See deepseek_responses_路由说明.md, "已知陷阱" #4.
   drop_params: true
   set_verbose: false
 

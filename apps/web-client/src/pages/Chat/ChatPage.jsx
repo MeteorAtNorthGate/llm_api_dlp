@@ -4,6 +4,7 @@ import { useEffect, useRef, useCallback, useMemo } from 'react';
 import Layout from '../../components/layout/Layout';
 import MessageBubble from '../../components/chat/MessageBubble';
 import ChatInput from '../../components/chat/ChatInput';
+import Toast from '../../components/ui/Toast';
 import { useChatStore } from '../../store/chatStore';
 import useT from '../../hooks/useT';
 
@@ -16,6 +17,8 @@ export default function ChatPage() {
     streamReasoningContent,
     streamSearch,
     streamError,
+    dlpNotice,
+    clearDlpNotice,
     availableModels,
     selectedModel,
     reasoningEffort,
@@ -161,6 +164,16 @@ export default function ChatPage() {
           onReasoningEffortChange={setReasoningEffort}
           hasActiveConversation={!!activeConversationId}
         />
+
+        {/* Keyed by notice id so a second masking notice restarts the timer
+            instead of silently extending the first one. */}
+        {dlpNotice && (
+          <Toast
+            key={dlpNotice.id}
+            message={t('chat.dlp.masked', { n: dlpNotice.count })}
+            onDismiss={clearDlpNotice}
+          />
+        )}
       </div>
     </Layout>
   );

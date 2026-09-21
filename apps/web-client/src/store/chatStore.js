@@ -30,6 +30,9 @@ export const useChatStore = create((set, get) => ({
   // assigned wholesale rather than accumulated here.
   streamSearch: null,
   streamError: null,
+  // {count, id} when the backend masked sensitive data on this turn, else null.
+  // `id` changes per notice so the toast remounts and restarts its timer.
+  dlpNotice: null,
   abortController: null,  // AbortController for cancelling in-flight stream
   availableModels: [],
   selectedModel: 'deepseek-v4-flash',
@@ -54,6 +57,7 @@ export const useChatStore = create((set, get) => ({
 
   setSelectedModel: (model) => set({ selectedModel: model }),
   setReasoningEffort: (level) => set({ reasoningEffort: level }),
+  clearDlpNotice: () => set({ dlpNotice: null }),
 
   // Cancel the in-flight streaming request and save partial content.
   stopStreaming: () => {
@@ -237,6 +241,14 @@ export const useChatStore = create((set, get) => ({
       const newConvId = response.headers.get('X-Conversation-Id');
       if (newConvId && !convId) {
         set({ activeConversationId: newConvId });
+      }
+
+      // DLP is applied server-side before the payload leaves, and it is
+      // deliberately visible (the answer will contain ██████). Without saying
+      // so, that just looks like a bug — hence the notice.
+      const masked = parseInt(response.headers.get('X-DLP-Masked') || '0', 10);
+      if (masked > 0) {
+        set({ dlpNotice: { count: masked, id: Date.now() } });
       }
 
       // Stream reader

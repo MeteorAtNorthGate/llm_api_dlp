@@ -131,7 +131,6 @@ llm_api_dlp/
 │   │       ├── db/models/   # SQLAlchemy ORM (User, Conversation, Message, Attachment, etc.)
 │   │       ├── services/    # Business logic (DLP masking, MinIO storage, doc parsing)
 │   │       └── schemas/     # Pydantic request/response models
-│   └── dlp-plugin/     # LiteLLM DLP data masking hooks
 ├── infra/
 │   ├── docker-compose.yml       # Local dev & build (postgres, keycloak, litellm, minio)
 │   ├── docker-compose.cloud.yml # Cloud deployment (npm_default network)

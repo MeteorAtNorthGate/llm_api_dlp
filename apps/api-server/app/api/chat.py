@@ -6,7 +6,7 @@ import uuid
 from collections.abc import AsyncGenerator
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -173,12 +173,16 @@ async def _get_or_create_user(
 @router.post("/completions")
 async def chat_completions(
     body: ChatCompletionRequest,
+    response: Response,
     user_claims: dict = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
     """Streaming chat completion — proxies to LiteLLM with DLP masking.
 
     Saves messages to the database and returns SSE stream to the frontend.
+
+    Both response modes carry an ``X-DLP-Masked`` header with the number of
+    sensitive matches replaced before the payload left the perimeter.
     """
     user = await _get_or_create_user(session, user_claims)
 
@@ -251,8 +255,12 @@ async def chat_completions(
         await session.flush()  # generate IDs so we can link attachments below
     await session.commit()
 
-    # Build LiteLLM-compatible messages with file content injected and DLP applied
+    # Build LiteLLM-compatible messages with file content injected and DLP applied.
+    # `dlp_match_count` is reported back to the client (X-DLP-Masked) so the UI can
+    # tell the user why their message shows up as ██████ — masking is intentionally
+    # visible, and a bare run of blocks reads like a bug. See dlp_service.
     litellm_messages = []
+    dlp_match_count = 0
     for i, msg in enumerate(body.messages):
         if msg.content_parts and msg.role == "user":
             # Process multi-part content — inject parsed file text
@@ -284,6 +292,7 @@ async def chat_completions(
 
             # Apply DLP masking
             mask_result = apply_masking(combined_text)
+            dlp_match_count += mask_result.match_count
             litellm_messages.append({
                 "role": msg.role,
                 "content": mask_result.masked_text,
@@ -291,6 +300,7 @@ async def chat_completions(
         elif msg.role in ("user", "system"):
             # Standard text message with DLP
             mask_result = apply_masking(msg.content)
+            dlp_match_count += mask_result.match_count
             litellm_messages.append({
                 "role": msg.role,
                 "content": mask_result.masked_text,
@@ -335,12 +345,14 @@ async def chat_completions(
             media_type="text/event-stream",
             headers={
                 "X-Conversation-Id": str(conversation.id),
+                "X-DLP-Masked": str(dlp_match_count),
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
             },
         )
     else:
         # Non-streaming: return full response
+        response.headers["X-DLP-Masked"] = str(dlp_match_count)
         is_responses = transport == TRANSPORT_RESPONSES
         url = f"{settings.LITELLM_BASE_URL}/v1/responses" if is_responses else (
             f"{settings.LITELLM_BASE_URL}/v1/chat/completions"

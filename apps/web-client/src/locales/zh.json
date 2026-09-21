@@ -38,6 +38,7 @@
   "chat.search.queriesTitle": "搜索关键词",
   "chat.search.sourcesTitle": "打开的网页",
   "chat.search.error": "联网搜索失败",
+  "chat.dlp.masked": "检测到 {n} 处敏感信息，已在发送前掩码（回答中是 ██ 而非原文，这是预期的）",
   "chat.you": "你",
   "chat.assistant": "助手",
   "chat.newChat": "+ 新对话",

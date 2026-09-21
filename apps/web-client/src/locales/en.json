@@ -38,6 +38,7 @@
   "chat.search.queriesTitle": "Search queries",
   "chat.search.sourcesTitle": "Pages opened",
   "chat.search.error": "Web search failed",
+  "chat.dlp.masked": "Masked {n} sensitive item(s) before sending — «██» in the reply is expected, not a bug",
   "chat.you": "You",
   "chat.assistant": "Assistant",
   "chat.newChat": "+ New Chat",
