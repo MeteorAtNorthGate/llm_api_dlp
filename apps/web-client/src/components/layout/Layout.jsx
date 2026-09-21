@@ -2,6 +2,7 @@
 
 import Header from './Header';
 import Sidebar from './Sidebar';
+import VersionBadge from './VersionBadge';
 
 export default function Layout({ children, showSidebar = true }) {
   return (
@@ -11,6 +12,7 @@ export default function Layout({ children, showSidebar = true }) {
         {showSidebar && <Sidebar />}
         <main className="flex-1 h-full min-w-0 flex flex-col overflow-clip">{children}</main>
       </div>
+      <VersionBadge />
     </div>
   );
 }

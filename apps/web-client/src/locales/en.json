@@ -1,5 +1,6 @@
 {
   "app.title": "LLM Platform",
+  "app.version": "Deployed version (git commit injected at build time)",
 
   "nav.chat": "Chat",
   "nav.apiKeys": "API Keys",

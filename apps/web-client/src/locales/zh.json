@@ -1,5 +1,6 @@
 {
   "app.title": "LLM Platform",
+  "app.version": "当前部署版本（构建时注入的 git 提交）",
 
   "nav.chat": "聊天",
   "nav.apiKeys": "API 密钥",
