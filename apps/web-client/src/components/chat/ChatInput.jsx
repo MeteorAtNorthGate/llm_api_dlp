@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import useT from '../../hooks/useT';
+import { Close, FileTypeIcon } from '../ui/Icons';
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 const MAX_FILES = 5;
@@ -53,20 +54,7 @@ const ALLOWED_EXTS = new Set(
   ACCEPT_EXTENSIONS_STR.split(',').map((s) => s.slice(1))
 );
 
-const FILE_TYPE_ICONS = {
-  pdf: '📄',
-  docx: '📝',
-  xlsx: '📊',
-  xls: '📊',
-  txt: '📃',
-  csv: '📃',
-  md: '📃',
-};
-
-function getFileIcon(file) {
-  const ext = file.name?.split('.').pop()?.toLowerCase();
-  return FILE_TYPE_ICONS[ext] || '📎';
-}
+const fileExt = (file) => file.name?.split('.').pop()?.toLowerCase();
 
 function formatSize(bytes) {
   if (bytes < 1024) return `${bytes}B`;
@@ -271,7 +259,7 @@ export default function ChatInput({
               key={f.id}
               className="flex items-center gap-1.5 bg-base-200 rounded-full pl-3 pr-1 py-1 text-sm"
             >
-              <span className="text-base">{getFileIcon(f.file)}</span>
+              <FileTypeIcon ext={fileExt(f.file)} size={14} className="shrink-0 opacity-60" />
               <span className="max-w-[150px] truncate">{f.file.name}</span>
               <span className="text-base-content/40 text-xs">{formatSize(f.file.size)}</span>
               <button
@@ -279,8 +267,9 @@ export default function ChatInput({
                 className="btn btn-ghost btn-xs btn-circle text-base-content/40 hover:text-error"
                 onClick={() => removeFile(f.id)}
                 disabled={isStreaming}
+                aria-label={t('common.delete')}
               >
-                ✕
+                <Close size={12} />
               </button>
             </div>
           ))}

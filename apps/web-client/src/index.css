@@ -132,6 +132,28 @@
   box-shadow: 0 0 0 1px oklch(var(--p));
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   Collapsible section header — Thinking / web-search toggles.
+
+   Light theme: outlined only (the container's border does the work),
+   no grey fill. Dark theme keeps the subtle fill, which reads better
+   against the VS Code Dark+ neutrals.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.collapsible-header {
+  background-color: transparent;
+}
+.collapsible-header:hover {
+  background-color: oklch(var(--bc) / 0.05);
+}
+
+[data-theme='llmDark'] .collapsible-header {
+  background-color: oklch(var(--bc) / 0.1);
+}
+[data-theme='llmDark'] .collapsible-header:hover {
+  background-color: oklch(var(--bc) / 0.15);
+}
+
 /* ── Edit hint (Shift+Enter tip) ── */
 
 .chat-bubble-user .edit-hint {

@@ -4,6 +4,7 @@ import { useConversations } from '../../hooks/useConversations';
 import { useChatStore } from '../../store/chatStore';
 import { formatDate, truncate } from '../../utils/format';
 import useT from '../../hooks/useT';
+import { Close } from '../ui/Icons';
 
 export default function Sidebar() {
   const { conversations, activeConversationId, loadConversation, deleteConversation } =
@@ -49,8 +50,9 @@ export default function Sidebar() {
                     e.stopPropagation();
                     deleteConversation(conv.id);
                   }}
+                  aria-label={t('common.delete')}
                 >
-                  ✕
+                  <Close size={12} />
                 </button>
               </a>
             </li>

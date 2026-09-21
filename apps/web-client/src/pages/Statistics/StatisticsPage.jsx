@@ -6,6 +6,7 @@ import Layout from '../../components/layout/Layout';
 import Spinner from '../../components/ui/Spinner';
 import { statsApi } from '../../services/api';
 import useT from '../../hooks/useT';
+import { ChevronRight, Key } from '../../components/ui/Icons';
 
 function getDefaultStart() {
   const d = new Date();
@@ -234,9 +235,10 @@ function UserRow({ user, isExpanded, onToggle, t }) {
       <tr className={hasKeys ? 'cursor-pointer' : ''} onClick={hasKeys ? onToggle : undefined}>
         <td>
           {hasKeys && (
-            <span className={`text-xs transition-transform inline-block ${isExpanded ? 'rotate-90' : ''}`}>
-              ▶
-            </span>
+            <ChevronRight
+              size={12}
+              className={`inline-block transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+            />
           )}
         </td>
         <td>
@@ -281,8 +283,8 @@ function UserRow({ user, isExpanded, onToggle, t }) {
             <tr key={`${user.user_id}-key-${idx}`} className="bg-base-200/50">
               <td></td>
               <td className="pl-6">
-                <span className="text-base-content/60 text-sm">
-                  🔑{' '}
+                <span className="text-base-content/60 text-sm inline-flex items-center gap-1">
+                  <Key size={14} className="shrink-0" />
                   {key.key_alias ? (
                     <span className="font-medium">{key.key_alias}</span>
                   ) : (

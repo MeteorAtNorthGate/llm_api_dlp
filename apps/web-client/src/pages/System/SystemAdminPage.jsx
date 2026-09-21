@@ -7,6 +7,7 @@ import Modal from '../../components/ui/Modal';
 import Spinner from '../../components/ui/Spinner';
 import { adminApi } from '../../services/api';
 import useT from '../../hooks/useT';
+import { Close } from '../../components/ui/Icons';
 
 const PROVIDERS = [
   { value: 'openai', label: 'OpenAI', defaultBase: 'https://api.openai.com/v1' },
@@ -309,7 +310,13 @@ export default function SystemAdminPage() {
         {error && (
           <div className="alert alert-error">
             <span>{error}</span>
-            <button className="btn btn-ghost btn-xs" onClick={() => setError(null)}>✕</button>
+            <button
+              className="btn btn-ghost btn-xs"
+              onClick={() => setError(null)}
+              aria-label={t('common.close')}
+            >
+              <Close size={12} />
+            </button>
           </div>
         )}
 

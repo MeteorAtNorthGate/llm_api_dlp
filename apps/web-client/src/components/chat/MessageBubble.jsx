@@ -8,17 +8,12 @@ import rehypeKatex from 'rehype-katex';
 import rehypeHighlight from 'rehype-highlight';
 import useT from '../../hooks/useT';
 import { normalizeLatexDelimiters } from '../../utils/latex';
-
-const FILE_TYPE_ICONS = {
-  pdf: '📄',
-  docx: '📝',
-  doc: '📝',
-  xlsx: '📊',
-  xls: '📊',
-  txt: '📃',
-  csv: '📃',
-  md: '📃',
-};
+import {
+  AlertTriangle,
+  ChevronRight,
+  FileTypeIcon,
+  Search,
+} from '../ui/Icons';
 
 function formatSize(bytes) {
   if (!bytes) return '';
@@ -149,11 +144,15 @@ export default function MessageBubble({ message, editable = false, onEditResend 
                 className="flex items-center gap-1 file-badge rounded-full pl-2 pr-2 py-0.5 text-xs"
                 title={`${att.file_name} (${formatSize(att.file_size)})${att.storage_status === 'failed' ? ' — Parse failed' : ''}`}
               >
-                <span>{FILE_TYPE_ICONS[att.file_type] || '📎'}</span>
+                <FileTypeIcon ext={att.file_type} size={14} className="shrink-0 opacity-60" />
                 <span className="max-w-[120px] truncate">{att.file_name}</span>
                 <span className="opacity-50">{formatSize(att.file_size)}</span>
                 {att.storage_status === 'failed' && (
-                  <span className="text-error ml-0.5" title={att.parse_error}>⚠️</span>
+                  <AlertTriangle
+                    size={14}
+                    className="text-error ml-0.5 shrink-0"
+                    title={att.parse_error}
+                  />
                 )}
               </div>
             ))}
@@ -173,12 +172,13 @@ export default function MessageBubble({ message, editable = false, onEditResend 
         {hasSearch && (
           <div className="mb-3 border border-base-content/20 rounded-lg overflow-hidden">
             <button
-              className="flex items-center gap-2 w-full px-3 py-1.5 text-xs font-medium bg-base-content/10 hover:bg-base-content/15 transition-colors"
+              className="collapsible-header flex items-center gap-2 w-full px-3 py-1.5 text-xs font-medium transition-colors"
               onClick={() => setShowSearch(!showSearch)}
             >
-              <span className={`text-[10px] transition-transform ${showSearch ? 'rotate-90' : ''}`}>
-                ▶
-              </span>
+              <ChevronRight
+                size={12}
+                className={`shrink-0 transition-transform ${showSearch ? 'rotate-90' : ''}`}
+              />
               {searchInProgress ? (
                 <>
                   <span className="loading loading-spinner loading-xs" />
@@ -186,7 +186,7 @@ export default function MessageBubble({ message, editable = false, onEditResend 
                 </>
               ) : (
                 <>
-                  <span>🔍</span>
+                  <Search size={12} className="shrink-0 opacity-70" />
                   <span>{t('chat.search.searched', { n: searchCount })}</span>
                   {searchCount > 0 && (
                     <span className="opacity-50">
@@ -248,12 +248,13 @@ export default function MessageBubble({ message, editable = false, onEditResend 
         {hasReasoning && (
           <div className="mb-3 border border-base-content/20 rounded-lg overflow-hidden">
             <button
-              className="flex items-center gap-2 w-full px-3 py-1.5 text-xs font-medium bg-base-content/10 hover:bg-base-content/15 transition-colors"
+              className="collapsible-header flex items-center gap-2 w-full px-3 py-1.5 text-xs font-medium transition-colors"
               onClick={() => setShowThinking(!showThinking)}
             >
-              <span className={`text-[10px] transition-transform ${showThinking ? 'rotate-90' : ''}`}>
-                ▶
-              </span>
+              <ChevronRight
+                size={12}
+                className={`shrink-0 transition-transform ${showThinking ? 'rotate-90' : ''}`}
+              />
               <span>{t('chat.thinking.title')}</span>
               <span className="opacity-50 ml-auto">
                 {showThinking ? t('chat.thinking.hideReasoning') : t('chat.thinking.showReasoning')}

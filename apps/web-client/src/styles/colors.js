@@ -34,11 +34,11 @@ export const lightTheme = {
   'accent-content':    '#ffffff',
 
   /* ── Neutral / Surface Colors ─────────────────────────────────────── */
-  'neutral':           '#f1f5f9',  /* Slate 50 — assistant bubble bg */
+  'neutral':           '#f8fafc',  /* Slate 50 — assistant bubble bg */
   'neutral-content':   '#1e293b',  /* Slate 800 — on neutral bg */
 
-  'base-100':          '#ffffff',  /* Page background */
-  'base-200':          '#f1f5f9',  /* Card / panel / sidebar bg */
+  'base-100':          '#fcffff',  /* Page background — rgb(252,255,255), slight cool tint */
+  'base-200':          '#f8fafc',  /* Card / panel / sidebar bg */
   'base-300':          '#e2e8f0',  /* Borders, dividers */
   'base-content':      '#1e293b',  /* Main text color */
 

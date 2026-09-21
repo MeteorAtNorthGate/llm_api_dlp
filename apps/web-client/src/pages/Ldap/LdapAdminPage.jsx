@@ -11,6 +11,7 @@ import Modal from '../../components/ui/Modal';
 import Spinner from '../../components/ui/Spinner';
 import { ldapApi } from '../../services/api';
 import useT from '../../hooks/useT';
+import { Close, Lock } from '../../components/ui/Icons';
 
 const EMPTY_FORM = {
   name: '',
@@ -379,7 +380,13 @@ export default function LdapAdminPage() {
         {error && (
           <div className={`alert ${error.includes(t('ldap.syncNow')) || error.startsWith('Sync triggered') ? 'alert-info' : 'alert-error'}`}>
             <span>{error}</span>
-            <button className="btn btn-ghost btn-xs" onClick={() => setError(null)}>✕</button>
+            <button
+              className="btn btn-ghost btn-xs"
+              onClick={() => setError(null)}
+              aria-label={t('common.close')}
+            >
+              <Close size={12} />
+            </button>
           </div>
         )}
 
@@ -412,7 +419,12 @@ export default function LdapAdminPage() {
                         <div>
                           <span className="font-medium">{t('ldap.attributes')}:</span>{' '}
                           <code className="text-xs">{s.username_attr}</code>
-                          {s.bind_password_set && <span className="ml-2 text-xs">🔒 {t('ldap.passwordSet')}</span>}
+                          {s.bind_password_set && (
+                            <span className="ml-2 text-xs inline-flex items-center gap-1">
+                              <Lock size={12} />
+                              {t('ldap.passwordSet')}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
