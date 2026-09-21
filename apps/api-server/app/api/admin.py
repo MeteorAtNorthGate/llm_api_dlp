@@ -29,6 +29,12 @@ PROVIDER_PREFIX: dict[str, str] = {
     "qwen": "openai",            # Qwen uses OpenAI-compatible API
     "deepseek": "deepseek",
     "deepseek_for_cc": "",  # No prefix — custom_llm_provider handles adapter selection
+    # Responses API 面：DeepSeek 只在 /v1/responses 上提供 web_search 等原生工具，
+    # 而 LiteLLM 没有 DeepSeek 的原生 Responses 适配器 —— 会退化成 Responses→Chat
+    # 桥接，把 web_search 翻译成 chat 侧的 web_search_options，被 DeepSeek 静默忽略。
+    # 借 openai 前缀让 LiteLLM 走原生 Responses 适配器直连 api_base（前缀在发出前
+    # 会被剥掉），从而绕开桥接。DeepSeek 端只认裸模型名，所以 api_base 必须带 /v1。
+    "deepseek_responses": "openai",
     "google": "gemini",
     "vertex_ai": "vertex_ai",
     "mistral": "mistral",
@@ -50,6 +56,8 @@ PROVIDER_DEFAULT_BASE: dict[str, str] = {
     "qwen": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
     "deepseek": "https://api.deepseek.com",
     "deepseek_for_cc": "https://api.deepseek.com/anthropic",
+    # 必须带 /v1：openai 适配器会拼 {api_base}/responses
+    "deepseek_responses": "https://api.deepseek.com/v1",
     "mistral": "https://api.mistral.ai/v1",
     "groq": "https://api.groq.com/openai/v1",
     "cohere": "https://api.cohere.com/v1",
@@ -165,6 +173,11 @@ def _parse_model_info(data: dict) -> ModelSummary:
     if "/" in model_full:
         provider, model_id = model_full.split("/", 1)
 
+    # The admin-chosen provider wins over the parsed one: the model string only
+    # encodes LiteLLM's adapter choice, which is not what the admin picked.
+    # e.g. deepseek_responses → "openai/deepseek-v4-pro", deepseek_for_cc → no prefix.
+    provider = model_info.get("admin_provider") or provider
+
     return ModelSummary(
         id=model_info.get("id", model_name),
         model_name=model_name,
@@ -230,6 +243,9 @@ async def add_model(body: ModelAddRequest, user: dict = Depends(_require_admin))
     model_info: dict = {
         "description": f"Managed via admin UI — provider: {body.provider}",
         "hidden_from_chat": body.hidden_from_chat,
+        # Remember what the admin actually picked, so the UI can show it back
+        # instead of reverse-engineering it from the litellm model string.
+        "admin_provider": body.provider,
     }
     if body.max_input_tokens is not None:
         model_info["max_input_tokens"] = body.max_input_tokens
@@ -286,6 +302,8 @@ async def update_model(
         litellm_params["tpm"] = body.tpm
 
     model_info: dict = {}
+    if body.provider:
+        model_info["admin_provider"] = body.provider
     if body.max_input_tokens is not None:
         model_info["max_input_tokens"] = body.max_input_tokens
     if body.hidden_from_chat is not None:

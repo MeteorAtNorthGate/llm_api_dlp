@@ -17,7 +17,7 @@ def _normalize(entry: dict) -> dict:
     return {
         "id": model_info.get("id", model_name),
         "name": model_name,
-        "provider": model_info.get("litellm_provider", ""),
+        "provider": model_info.get("admin_provider") or model_info.get("litellm_provider", ""),
         "description": model_info.get("description", ""),
     }
 

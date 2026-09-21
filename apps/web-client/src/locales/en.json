@@ -136,6 +136,7 @@
   "providers.customModelHint": "Enter the full LiteLLM model path (provider/model-name). See",
   "providers.customModelHint2": "for all supported providers.",
   "providers.modelIdHint": "Provider model name. LiteLLM will call this as",
+  "providers.noteDeepseekResponses": "Recommended for clients that speak the OpenAI Responses API (e.g. Codex CLI). DeepSeek's built-in web search only exists on its /v1/responses endpoint, so this preset routes around LiteLLM's Responses→Chat bridge that otherwise silently strips it.",
   "providers.active": "Active",
   "providers.baseUrl": "Base URL",
   "providers.context": "Context",

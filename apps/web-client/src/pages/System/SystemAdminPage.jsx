@@ -14,7 +14,11 @@ const PROVIDERS = [
   { value: 'anthropic', label: 'Anthropic (Claude)', defaultBase: '' },
   { value: 'qwen', label: 'Qwen / Alibaba', defaultBase: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1' },
   { value: 'deepseek', label: 'DeepSeek', defaultBase: 'https://api.deepseek.com/v1' },
-  { value: 'deepseek_for_cc', label: 'DeepSeek (Anthropic-Compatible)', defaultBase: 'https://api.deepseek.com/anthropic' },
+  // `prefix` is the LiteLLM model prefix actually sent (PROVIDER_PREFIX in admin.py).
+  // It differs from `value` for the presets that borrow another provider's adapter —
+  // deepseek_for_cc has none, deepseek_responses borrows openai's Responses adapter.
+  { value: 'deepseek_for_cc', label: 'DeepSeek (Anthropic-Compatible)', defaultBase: 'https://api.deepseek.com/anthropic', prefix: '' },
+  { value: 'deepseek_responses', label: 'DeepSeek (Responses API)', defaultBase: 'https://api.deepseek.com/v1', prefix: 'openai', note: 'providers.noteDeepseekResponses' },
   { value: 'google', label: 'Google AI (Gemini)', defaultBase: '' },
   { value: 'vertex_ai', label: 'Google Vertex AI', defaultBase: '' },
   { value: 'mistral', label: 'Mistral AI', defaultBase: 'https://api.mistral.ai/v1' },
@@ -30,6 +34,23 @@ const PROVIDERS = [
   { value: 'replicate', label: 'Replicate', defaultBase: '' },
   { value: 'custom', label: 'Custom (full model path)', defaultBase: '' },
 ];
+
+/** The LiteLLM model prefix a provider actually sends upstream. */
+const providerPrefix = (value) => {
+  const prov = PROVIDERS.find((p) => p.value === value);
+  return prov?.prefix ?? value;
+};
+
+/** The full model path LiteLLM will call, e.g. "openai/deepseek-v4-pro". */
+const effectiveModelPath = (provider, modelId) => {
+  const prefix = providerPrefix(provider);
+  const id = modelId || 'model-id';
+  return prefix ? `${prefix}/${id}` : id;
+};
+
+/** Human-readable label for a provider value coming back from the API. */
+const providerLabel = (value) =>
+  PROVIDERS.find((p) => p.value === value)?.label || value;
 
 const EMPTY_FORM = {
   model_name: '',
@@ -266,6 +287,8 @@ export default function SystemAdminPage() {
 
   // ── Render ────────────────────────────────────────────
 
+  const selectedProvider = PROVIDERS.find((p) => p.value === addForm.provider);
+
   return (
     <Layout showSidebar={false}>
       <div className="p-6 max-w-5xl mx-auto space-y-6 h-full overflow-y-auto">
@@ -373,7 +396,7 @@ export default function SystemAdminPage() {
                     <div>
                       <h3 className="font-bold text-lg">{m.model_name}</h3>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="badge badge-outline badge-sm">{m.provider}</span>
+                        <span className="badge badge-outline badge-sm">{providerLabel(m.provider)}</span>
                         <code className="text-xs text-base-content/50">{m.model_id}</code>
                       </div>
                     </div>
@@ -445,6 +468,11 @@ export default function SystemAdminPage() {
                     <option key={p.value} value={p.value}>{p.label}</option>
                   ))}
                 </select>
+                {selectedProvider?.note && (
+                  <label className="label"><span className="label-text-alt text-base-content/50">
+                    {t(selectedProvider.note)}
+                  </span></label>
+                )}
               </div>
             </div>
 
@@ -471,7 +499,7 @@ export default function SystemAdminPage() {
                     onChange={(e) => setAddForm((f) => ({ ...f, model_id: e.target.value }))}
                   />
                   <label className="label"><span className="label-text-alt text-base-content/50">
-                    {t('providers.modelIdHint')} <code className="font-bold">{addForm.provider}/{addForm.model_id || 'model-id'}</code>
+                    {t('providers.modelIdHint')} <code className="font-bold">{effectiveModelPath(addForm.provider, addForm.model_id)}</code>
                   </span></label>
                 </>
               )}

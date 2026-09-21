@@ -136,6 +136,7 @@
   "providers.customModelHint": "输入完整的 LiteLLM 模型路径 (provider/model-name)。查看",
   "providers.customModelHint2": "了解所有支持的供应商。",
   "providers.modelIdHint": "供应商模型名称。LiteLLM 将使用以下路径调用：",
+  "providers.noteDeepseekResponses": "适用于使用 OpenAI Responses API 的客户端（如 Codex CLI）。DeepSeek 的内置联网搜索只存在于其 /v1/responses 端点，此预设用于绕开 LiteLLM 的 Responses→Chat 桥接——该桥接会静默地丢掉搜索能力。",
   "providers.active": "活跃",
   "providers.baseUrl": "Base URL",
   "providers.context": "上下文",
