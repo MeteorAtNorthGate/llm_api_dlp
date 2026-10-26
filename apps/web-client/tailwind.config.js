@@ -1,4 +1,4 @@
-import { lightTheme, darkTheme } from './src/styles/colors.js';
+import { lightTheme, darkTheme, softLightTheme, softDarkTheme } from './src/styles/colors.js';
 
 /** @type {import('tailwindcss').Config} */
 export default {
@@ -33,6 +33,8 @@ export default {
         // Dark variant — edit src/styles/colors.js to change
         llmDark: darkTheme,
       },
+      { llmSoft: softLightTheme },
+      { llmSoftDark: softDarkTheme },
       'corporate',
     ],
   },

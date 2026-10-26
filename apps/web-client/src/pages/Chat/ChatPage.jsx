@@ -7,6 +7,7 @@ import ChatInput from '../../components/chat/ChatInput';
 import Toast from '../../components/ui/Toast';
 import { useChatStore } from '../../store/chatStore';
 import useT from '../../hooks/useT';
+import { Lock } from '../../components/ui/Icons';
 
 export default function ChatPage() {
   const t = useT();
@@ -91,16 +92,17 @@ export default function ChatPage() {
 
   return (
     <Layout>
-      <div className="flex flex-col flex-1 min-h-0">
+      <div className="chat-workspace flex flex-col flex-1 min-h-0">
         {/* Messages area */}
         <div
-          className="flex-1 overflow-y-auto px-4 py-6"
+          className="chat-messages flex-1 overflow-y-auto px-4 py-6"
           ref={scrollContainerRef}
           onScroll={handleScroll}
         >
           {messages.length === 0 && !isStreaming && (
             <div className="flex items-center justify-center h-full">
-              <div className="text-center space-y-3 max-w-md">
+              <div className="chat-welcome text-center space-y-3 max-w-md">
+                <div className="chat-welcome-emblem" aria-hidden="true"><Lock size={34} /></div>
                 <h2 className="text-2xl font-bold">{t('chat.welcome')}</h2>
                 <p className="text-base-content/60">
                   {t('chat.welcomeDesc')}

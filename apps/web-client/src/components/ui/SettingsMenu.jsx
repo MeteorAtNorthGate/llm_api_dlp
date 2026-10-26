@@ -1,162 +1,163 @@
-/** SettingsMenu — dropdown with Language and Theme submenus. */
-
-import { useState, useRef, useEffect } from 'react';
+/** Appearance preferences stay open while design and color mode are adjusted. */
+import { useState, useRef, useEffect, useId } from 'react';
 import { useLanguageStore } from '../../store/languageStore';
 import { useThemeStore } from '../../store/themeStore';
 import useT from '../../hooks/useT';
-import { Check, ChevronRight } from './Icons';
+import { Check, Close, Sun, Moon, Monitor, Settings } from './Icons';
 
-const LANGUAGES = [
-  { value: 'zh', labelKey: 'settings.langZh' },
-  { value: 'en', labelKey: 'settings.langEn' },
+const DESIGNS = [
+  { value: 'flat', label: 'settings.designFlat', description: 'settings.designFlatDesc' },
+  { value: 'neumorphism', label: 'settings.designNeumorphism', description: 'settings.designNeumorphismDesc' },
 ];
-
-const THEMES = [
-  { value: 'llm',     labelKey: 'settings.themeLight' },
-  { value: 'llmDark', labelKey: 'settings.themeDark' },
+const COLOR_MODES = [
+  { value: 'light', label: 'settings.themeLight', Icon: Sun },
+  { value: 'dark', label: 'settings.themeDark', Icon: Moon },
+  { value: 'system', label: 'settings.themeSystem', Icon: Monitor },
+];
+const LANGUAGES = [
+  { value: 'zh', label: 'settings.langZh' },
+  { value: 'en', label: 'settings.langEn' },
 ];
 
 export default function SettingsMenu() {
   const t = useT();
   const language = useLanguageStore((s) => s.language);
   const setLanguage = useLanguageStore((s) => s.setLanguage);
-  const theme = useThemeStore((s) => s.theme);
-  const setTheme = useThemeStore((s) => s.setTheme);
-
+  const design = useThemeStore((s) => s.design);
+  const colorMode = useThemeStore((s) => s.colorMode);
+  const setDesign = useThemeStore((s) => s.setDesign);
+  const setColorMode = useThemeStore((s) => s.setColorMode);
   const [open, setOpen] = useState(false);
-  const [expanded, setExpanded] = useState(null); // 'lang' | 'theme' | null
   const menuRef = useRef(null);
+  const triggerRef = useRef(null);
+  const id = useId();
 
-  // Close on outside click
   useEffect(() => {
     if (!open) return;
-    const handler = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
+    const onOutside = (event) => {
+      if (!menuRef.current?.contains(event.target)) setOpen(false);
+    };
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
         setOpen(false);
-        setExpanded(null);
+        triggerRef.current?.focus();
       }
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('mousedown', onOutside);
+    document.addEventListener('focusin', onOutside);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onOutside);
+      document.removeEventListener('focusin', onOutside);
+      document.removeEventListener('keydown', onKeyDown);
+    };
   }, [open]);
-
-  const toggle = (section) => {
-    setExpanded((prev) => (prev === section ? null : section));
-  };
-
-  const handleSelectLang = (lang) => {
-    setLanguage(lang);
-    setExpanded(null);
-    setOpen(false);
-  };
-
-  const handleSelectTheme = (th) => {
-    setTheme(th);
-    setExpanded(null);
-    setOpen(false);
-  };
 
   return (
     <div className="relative" ref={menuRef}>
-      {/* ── Trigger button ── */}
       <button
+        ref={triggerRef}
         className="btn btn-ghost btn-sm gap-1.5"
-        onClick={() => {
-          setOpen((v) => !v);
-          if (open) setExpanded(null);
-        }}
+        aria-label={t('settings.title')}
+        aria-expanded={open}
+        aria-controls={open ? id : undefined}
+        onClick={() => setOpen((value) => !value)}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="3" />
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-        </svg>
+        <Settings size={16} />
         <span className="hidden sm:inline">{t('settings.title')}</span>
       </button>
 
-      {/* ── Dropdown ── */}
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-50 w-52 bg-base-100 rounded-box shadow-lg border border-base-300 overflow-hidden">
-          {/* ── Language section ── */}
-          <button
-            className="flex items-center justify-between w-full px-4 py-2.5 text-sm font-medium hover:bg-base-200 transition-colors"
-            onClick={() => toggle('lang')}
-          >
-            <span>{t('settings.language')}</span>
-            <span className="flex items-center gap-2">
-              <span className="text-xs text-base-content/50">
-                {LANGUAGES.find((l) => l.value === language)?.labelKey
-                  ? t(LANGUAGES.find((l) => l.value === language).labelKey)
-                  : language}
-              </span>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="12" height="12" viewBox="0 0 24 24"
-                fill="none" stroke="currentColor" strokeWidth="2"
-                strokeLinecap="round" strokeLinejoin="round"
-                className={`transition-transform ${expanded === 'lang' ? 'rotate-90' : ''}`}
-              >
-                <path d="m9 18 6-6-6-6" />
-              </svg>
-            </span>
-          </button>
+        <section id={id} className="settings-panel" aria-label={t('settings.title')}>
+          <div className="flex items-start justify-between gap-3 mb-5">
+            <div>
+              <h2 className="font-semibold text-base">{t('settings.appearance')}</h2>
+              <p className="text-xs text-base-content/60 mt-1">
+                {t(DESIGNS.find((option) => option.value === design).label)}
+                {' · '}{t(COLOR_MODES.find((option) => option.value === colorMode).label)}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn btn-ghost btn-xs btn-circle"
+              aria-label={t('common.close')}
+              onClick={() => { setOpen(false); triggerRef.current?.focus(); }}
+            >
+              <Close size={14} />
+            </button>
+          </div>
 
-          {expanded === 'lang' && (
-            <div className="border-t border-base-200 bg-base-200/50 py-1">
-              {LANGUAGES.map((l) => (
-                <button
-                  key={l.value}
-                  className={`flex items-center w-full px-4 py-1.5 text-sm transition-colors hover:bg-base-300/50 ${
-                    language === l.value ? 'font-semibold text-primary' : 'text-base-content/80'
-                  }`}
-                  onClick={() => handleSelectLang(l.value)}
-                >
-                  <span className="w-5 flex items-center mr-2">
-                    {language === l.value && <Check size={14} />}
+          <fieldset>
+            <legend className="settings-legend">{t('settings.design')}</legend>
+            <div className="grid grid-cols-2 gap-3">
+              {DESIGNS.map((option) => (
+                <label className="theme-choice" key={option.value}>
+                  <input
+                    type="radio"
+                    name={`${id}-design`}
+                    value={option.value}
+                    checked={design === option.value}
+                    onChange={() => setDesign(option.value)}
+                    className="peer sr-only"
+                  />
+                  <span className="theme-choice-card">
+                    <span className={`theme-preview theme-preview--${option.value}`} aria-hidden="true">
+                      <span className="theme-preview-sidebar"><i /><i /><i /></span>
+                      <span className="theme-preview-content"><span>Aa</span><i /><i /></span>
+                    </span>
+                    <span className="flex items-center justify-between gap-1 text-sm font-medium mt-3">
+                      {t(option.label)}
+                      {design === option.value && <Check size={14} className="text-primary" />}
+                    </span>
+                    <span className="block text-[11px] text-base-content/60 mt-1">{t(option.description)}</span>
                   </span>
-                  {t(l.labelKey)}
-                </button>
+                </label>
               ))}
             </div>
-          )}
+          </fieldset>
 
-          {/* ── Theme section ── */}
-          <button
-            className="flex items-center justify-between w-full px-4 py-2.5 text-sm font-medium hover:bg-base-200 transition-colors border-t border-base-200"
-            onClick={() => toggle('theme')}
-          >
-            <span>{t('settings.theme')}</span>
-            <span className="flex items-center gap-2">
-              <span className="text-xs text-base-content/50">
-                {THEMES.find((th) => th.value === theme)?.labelKey
-                  ? t(THEMES.find((th) => th.value === theme).labelKey)
-                  : theme}
-              </span>
-              <ChevronRight
-                size={12}
-                className={`shrink-0 transition-transform ${expanded === 'theme' ? 'rotate-90' : ''}`}
-              />
-            </span>
-          </button>
-
-          {expanded === 'theme' && (
-            <div className="border-t border-base-200 bg-base-200/50 py-1">
-              {THEMES.map((th) => (
-                <button
-                  key={th.value}
-                  className={`flex items-center w-full px-4 py-1.5 text-sm transition-colors hover:bg-base-300/50 ${
-                    theme === th.value ? 'font-semibold text-primary' : 'text-base-content/80'
-                  }`}
-                  onClick={() => handleSelectTheme(th.value)}
-                >
-                  <span className="w-5 flex items-center mr-2">
-                    {theme === th.value && <Check size={14} />}
+          <fieldset className="mt-5">
+            <legend className="settings-legend">{t('settings.colorMode')}</legend>
+            <div className="settings-segmented grid grid-cols-3 gap-1" >
+              {COLOR_MODES.map(({ value, label, Icon }) => (
+                <label className="cursor-pointer min-w-0" key={value}>
+                  <input
+                    type="radio"
+                    name={`${id}-color-mode`}
+                    value={value}
+                    checked={colorMode === value}
+                    onChange={() => setColorMode(value)}
+                    className="peer sr-only"
+                  />
+                  <span className="settings-segment flex-col gap-1.5 py-2.5">
+                    <Icon size={16} />
+                    <span>{t(label)}</span>
                   </span>
-                  {t(th.labelKey)}
-                </button>
+                </label>
               ))}
             </div>
-          )}
-        </div>
+          </fieldset>
+
+          <fieldset className="mt-5 pt-4 border-t border-base-content/10">
+            <legend className="settings-legend float-left w-full">{t('settings.language')}</legend>
+            <div className="settings-segmented grid grid-cols-2 gap-1 clear-both">
+              {LANGUAGES.map(({ value, label }) => (
+                <label className="cursor-pointer" key={value}>
+                  <input
+                    type="radio"
+                    name={`${id}-language`}
+                    value={value}
+                    checked={language === value}
+                    onChange={() => setLanguage(value)}
+                    className="peer sr-only"
+                  />
+                  <span className="settings-segment py-2">{t(label)}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        </section>
       )}
     </div>
   );

@@ -210,7 +210,7 @@ export default function ChatInput({
   const canSend = (input.trim() || files.length > 0) && !isStreaming;
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2 p-4 bg-base-100 border-t border-base-300">
+    <form onSubmit={handleSubmit} className="chat-composer flex flex-col gap-2 p-4 bg-base-100 border-t border-base-300">
       {/* Model + Thinking selector row */}
       {models.length > 0 && (
         <div className="space-y-1">
@@ -279,7 +279,7 @@ export default function ChatInput({
       {/* Drop zone + text input row */}
       <div
         {...getRootProps()}
-        className={`flex gap-2 items-end rounded-lg border-2 border-dashed p-2 transition-colors ${
+        className={`chat-input-well flex gap-2 items-end rounded-lg border-2 border-dashed p-2 transition-colors ${
           isDragActive
             ? 'border-primary bg-primary/5'
             : 'border-transparent hover:border-base-300'
@@ -305,6 +305,7 @@ export default function ChatInput({
           onClick={openFilePicker}
           disabled={isStreaming}
           title={hasActiveConversation ? t('chat.attachFiles') : t('chat.attachHint')}
+          aria-label={t('chat.attachFiles')}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
@@ -314,6 +315,7 @@ export default function ChatInput({
         <textarea
           ref={textareaRef}
           className="textarea textarea-bordered flex-1 min-h-[44px] max-h-[200px] resize-none"
+          aria-label={t('chat.message')}
           placeholder={isStreaming ? t('chat.waiting') : isDragActive ? t('chat.dropFiles') : t('chat.placeholder')}
           value={input}
           onChange={handleInputChange}
@@ -327,7 +329,8 @@ export default function ChatInput({
             className="btn btn-error btn-square btn-sm flex-shrink-0"
             type="button"
             onClick={onStop}
-            title="Stop generating"
+            title={t('chat.stopGenerating')}
+            aria-label={t('chat.stopGenerating')}
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
               <rect x="4" y="4" width="16" height="16" rx="2" />
@@ -338,6 +341,7 @@ export default function ChatInput({
             className="btn btn-primary btn-square btn-sm flex-shrink-0"
             type="submit"
             disabled={!canSend}
+            aria-label={t('chat.editSend')}
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="22" y1="2" x2="11" y2="13" />

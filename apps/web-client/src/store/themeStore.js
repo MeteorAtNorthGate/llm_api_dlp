@@ -1,57 +1,47 @@
-/** Theme store — Zustand + localStorage persistence for daisyUI theme switching. */
-
+/** Design style and color mode are independent, persisted preferences. */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { createThemeRuntime } from '../styles/themeRuntime';
 
-const DEFAULT_THEME = 'llm';
-
-function applyTheme(theme) {
-  if (typeof document !== 'undefined') {
-    document.documentElement.setAttribute('data-theme', theme);
-  }
-}
-
-// Apply on load (as early fallback; index.html inline-script fires even earlier)
-if (typeof localStorage !== 'undefined') {
-  try {
-    const raw = localStorage.getItem('app-theme');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed.state?.theme) {
-        applyTheme(parsed.state.theme);
-      } else {
-        applyTheme(DEFAULT_THEME);
-      }
-    } else {
-      applyTheme(DEFAULT_THEME);
-    }
-  } catch {
-    applyTheme(DEFAULT_THEME);
-  }
-} else {
-  applyTheme(DEFAULT_THEME);
-}
+const browser = typeof window !== 'undefined' ? window : undefined;
+const runtime = createThemeRuntime(browser);
+const initialPreferences = runtime.initialize();
 
 export const useThemeStore = create(
   persist(
     (set) => ({
-      theme: DEFAULT_THEME,
-      setTheme: (theme) => {
-        applyTheme(theme);
-        set({ theme });
-      },
+      ...initialPreferences,
+      setDesign: (design) => set((state) => runtime.normalize({ ...state, design })),
+      setColorMode: (colorMode) => set((state) => runtime.normalize({ ...state, colorMode })),
     }),
     {
-      name: 'app-theme',               // localStorage key
-      onRehydrateStorage: () => {
-        return (state) => {
-          if (!state) return;
-          if (!['llm', 'llmDark'].includes(state.theme)) {
-            state.theme = DEFAULT_THEME;
-          }
-          applyTheme(state.theme);
-        };
+      name: runtime.storageKey,
+      version: 1,
+      partialize: ({ design, colorMode }) => ({ design, colorMode }),
+      migrate: (saved) => runtime.normalize(saved),
+      merge: (saved, current) => ({ ...current, ...runtime.normalize(saved) }),
+      onRehydrateStorage: () => (state) => {
+        if (state) runtime.apply(state);
       },
     }
   )
 );
+
+const unsubscribe = useThemeStore.subscribe((state) => runtime.apply(state));
+const colorScheme = browser?.matchMedia?.('(prefers-color-scheme: dark)');
+const onSystemChange = () => runtime.apply(useThemeStore.getState());
+const onStorageChange = (event) => {
+  if (event.key === runtime.storageKey || event.key === null) {
+    useThemeStore.persist.rehydrate();
+  }
+};
+colorScheme?.addEventListener('change', onSystemChange);
+browser?.addEventListener('storage', onStorageChange);
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    unsubscribe();
+    colorScheme?.removeEventListener('change', onSystemChange);
+    browser?.removeEventListener('storage', onStorageChange);
+  });
+}

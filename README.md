@@ -119,6 +119,21 @@ Target: `10.10.10.86`, user: `devuser`, path: `/home/devuser/projects/LLM_API/`
 
 NPM proxy rule: `http` → `llm-dlp-web:80`
 
+## Frontend appearance
+
+Open **页面选项 / Settings** in the header to independently choose a design style
+(**扁平化 / Flat** or **新拟态 / Neumorphism**) and a color mode
+(light, dark, or system). Changes apply immediately and persist across reloads
+and tabs. System mode also follows live operating-system appearance changes.
+New users start with light Neumorphism; saved `llm` / `llmDark` preferences
+automatically migrate to Flat with the original color mode.
+
+The palette and material tokens live in `apps/web-client/src/styles/colors.js`.
+Soft UI rules are scoped in `src/styles/neumorphism.css`; the original Flat
+appearance remains available. `src/styles/themeRuntime.js` supplies the same
+preference migration and application logic to the store and Vite's pre-paint
+script, avoiding an incorrect theme flash during reloads.
+
 ## Project Structure
 
 ```

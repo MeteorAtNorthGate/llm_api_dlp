@@ -6,18 +6,18 @@ import { formatDate, truncate } from '../../utils/format';
 import useT from '../../hooks/useT';
 import { Close } from '../ui/Icons';
 
-export default function Sidebar() {
+export default function Sidebar({ open = false, onClose = () => {} }) {
   const { conversations, activeConversationId, loadConversation, deleteConversation } =
     useConversations();
   const newConversation = useChatStore((s) => s.newConversation);
   const t = useT();
 
   return (
-    <aside className="w-64 bg-base-100 border-r border-base-300 flex flex-col h-full">
+    <aside id="conversation-sidebar" className={`app-sidebar w-64 bg-base-100 border-r border-base-300 flex flex-col h-full ${open ? 'is-open' : ''}`}>
       <div className="p-3">
         <button
           className="btn btn-primary btn-sm w-full"
-          onClick={newConversation}
+          onClick={() => { newConversation(); onClose(); }}
         >
           {t('chat.newChat')}
         </button>
@@ -33,10 +33,10 @@ export default function Sidebar() {
           {conversations.map((conv) => (
             <li key={conv.id} className="overflow-hidden">
               <a
-                className={`group !grid-cols-[minmax(0,1fr)] w-full min-w-0 overflow-hidden ${
+                className={`conversation-item group !grid-cols-[minmax(0,1fr)] w-full min-w-0 overflow-hidden ${
                   activeConversationId === conv.id ? 'active' : ''
                 }`}
-                onClick={() => loadConversation(conv.id)}
+                onClick={() => { loadConversation(conv.id); onClose(); }}
               >
                 <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                   <span className="text-sm truncate">{truncate(conv.title, 20)}</span>

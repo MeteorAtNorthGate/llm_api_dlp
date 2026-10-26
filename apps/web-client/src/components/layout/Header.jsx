@@ -3,8 +3,10 @@
 import { useAuth } from '../../hooks/useAuth';
 import useT from '../../hooks/useT';
 import SettingsMenu from '../ui/SettingsMenu';
+import { Link, NavLink } from 'react-router-dom';
+import { Lock } from '../ui/Icons';
 
-export default function Header() {
+export default function Header({ showSidebar = false, sidebarOpen = false, onToggleSidebar }) {
   const { user, logout } = useAuth();
   const t = useT();
 
@@ -13,27 +15,42 @@ export default function Header() {
   const isDeveloper = groups.includes('developers');
 
   return (
-    <header className="navbar bg-base-100 border-b border-base-300 px-4 shadow-sm">
-      <div className="flex-1">
-        <a href="/" className="text-xl font-bold tracking-tight">
+    <header className="app-header navbar bg-base-100 border-b border-base-300 px-4 shadow-sm">
+      <div className="flex-1 min-w-0">
+        {showSidebar && (
+          <button
+            type="button"
+            className="sidebar-toggle btn btn-ghost btn-sm btn-square"
+            aria-label={t('nav.conversations')}
+            aria-expanded={sidebarOpen}
+            aria-controls="conversation-sidebar"
+            onClick={onToggleSidebar}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <path d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        )}
+        <Link to="/" className="app-brand text-xl font-bold tracking-tight shrink-0">
+          <span className="app-brand-mark" aria-hidden="true"><Lock size={19} /></span>
           {t('app.title')}
-        </a>
-        <div className="hidden sm:flex ml-6 gap-1">
-          <a href="/" className="btn btn-ghost btn-sm">{t('nav.chat')}</a>
+        </Link>
+        <nav className="app-nav hidden sm:flex ml-6 gap-1" aria-label={t('nav.main')}>
+          <NavLink to="/" end className="btn btn-ghost btn-sm">{t('nav.chat')}</NavLink>
           {isDeveloper && (
-            <a href="/admin" className="btn btn-ghost btn-sm">{t('nav.apiKeys')}</a>
+            <NavLink to="/admin" className="btn btn-ghost btn-sm">{t('nav.apiKeys')}</NavLink>
           )}
           {isAdmin && (
-            <a href="/api-providers" className="btn btn-ghost btn-sm text-primary">{t('nav.apiProviders')}</a>
+            <NavLink to="/api-providers" className="btn btn-ghost btn-sm text-primary">{t('nav.apiProviders')}</NavLink>
           )}
           {isAdmin && (
-            <a href="/ldap" className="btn btn-ghost btn-sm text-primary">{t('nav.ldap')}</a>
+            <NavLink to="/ldap" className="btn btn-ghost btn-sm text-primary">{t('nav.ldap')}</NavLink>
           )}
           {isAdmin && (
-            <a href="/statistics" className="btn btn-ghost btn-sm text-primary">{t('nav.statistics')}</a>
+            <NavLink to="/statistics" className="btn btn-ghost btn-sm text-primary">{t('nav.statistics')}</NavLink>
           )}
-          <a href="/usage" className="btn btn-ghost btn-sm">{t('nav.usage')}</a>
-        </div>
+          <NavLink to="/usage" className="btn btn-ghost btn-sm">{t('nav.usage')}</NavLink>
+        </nav>
       </div>
       <div className="flex-none gap-2">
         <SettingsMenu />

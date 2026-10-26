@@ -104,6 +104,51 @@ export const darkTheme = {
   '--btn-focus-scale': '0.97',
 };
 
+/** Soft UI surfaces share a material; light and shadow define their depth. */
+export const softLightTheme = {
+  ...lightTheme,
+  'primary': '#4963a6',
+  'secondary': '#645b91',
+  'accent': '#257a85',
+  'neutral': '#e9edf0',
+  'neutral-content': '#374151',
+  'base-100': '#e9edf0',
+  'base-200': '#e9edf0',
+  'base-300': '#d7dee4',
+  'base-content': '#374151',
+  'info': '#3e69a2',
+  'success': '#28795f',
+  'warning': '#946015',
+  'error': '#b04450',
+  '--rounded-box': '1.25rem',
+  '--rounded-btn': '0.875rem',
+  '--soft-surface': '#e9edf0',
+  '--soft-light': '#ffffff',
+  '--soft-shadow': '#c7cdd3',
+  '--soft-edge': '#ffffff99',
+};
+
+export const softDarkTheme = {
+  ...darkTheme,
+  'primary': '#a1b8f6',
+  'primary-content': '#202936',
+  'secondary': '#c0b4ec',
+  'secondary-content': '#202936',
+  'accent': '#81cec3',
+  'neutral': '#2c333e',
+  'neutral-content': '#dee4ed',
+  'base-100': '#2c333e',
+  'base-200': '#2c333e',
+  'base-300': '#424c5c',
+  'base-content': '#dee4ed',
+  '--rounded-box': '1.25rem',
+  '--rounded-btn': '0.875rem',
+  '--soft-surface': '#2c333e',
+  '--soft-light': '#38424f',
+  '--soft-shadow': '#20252d',
+  '--soft-edge': '#5d6a7d44',
+};
+
 /**
  * ═══════════════════════════════════════════════════════════════════════
  *  Preset Swatches — replace lightTheme with one of these to try

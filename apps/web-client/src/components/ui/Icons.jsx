@@ -34,6 +34,41 @@ function Icon({ size = 16, className = '', children, ...rest }) {
 
 /* ── Navigation / disclosure ───────────────────────────────────────── */
 
+export function Settings(props) {
+  return (
+    <Icon {...props}>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82 1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09A1.65 1.65 0 0 0 19.4 15Z" />
+      <circle cx="12" cy="12" r="3" />
+    </Icon>
+  );
+}
+
+export function Sun(props) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+    </Icon>
+  );
+}
+
+export function Moon(props) {
+  return (
+    <Icon {...props}>
+      <path d="M20.9 13a9 9 0 0 1-9.9-9.9A9 9 0 1 0 20.9 13Z" />
+    </Icon>
+  );
+}
+
+export function Monitor(props) {
+  return (
+    <Icon {...props}>
+      <rect x="3" y="3" width="18" height="13" rx="2" />
+      <path d="M8 21h8m-4-5v5" />
+    </Icon>
+  );
+}
+
 export function ChevronRight(props) {
   return (
     <Icon {...props}>
