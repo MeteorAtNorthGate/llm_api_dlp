@@ -23,22 +23,22 @@ export default function Sidebar({ open = false, onClose = () => {} }) {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden px-2">
+      <div className="conversation-scroll flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden px-2">
         {conversations.length === 0 && (
           <p className="text-sm text-base-content/50 text-center py-8">
             {t('chat.noConversations')}
           </p>
         )}
-        <ul className="menu menu-sm p-0 w-full">
+        <ul className="conversation-list menu menu-sm p-0 w-full">
           {conversations.map((conv) => (
-            <li key={conv.id} className="overflow-hidden">
+            <li key={conv.id} className="min-w-0">
               <a
-                className={`conversation-item group !grid-cols-[minmax(0,1fr)] w-full min-w-0 overflow-hidden ${
+                className={`conversation-item group relative !grid-cols-[minmax(0,1fr)] w-full min-w-0 ${
                   activeConversationId === conv.id ? 'active' : ''
                 }`}
                 onClick={() => { loadConversation(conv.id); onClose(); }}
               >
-                <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <div className="flex min-w-0 flex-col overflow-hidden">
                   <span className="text-sm truncate">{truncate(conv.title, 20)}</span>
                   <span className="text-xs text-base-content/50 truncate">
                     {formatDate(conv.updated_at)} · {conv.message_count} {t('chat.msgs')}

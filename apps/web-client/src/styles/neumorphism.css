@@ -1,13 +1,14 @@
 /*
  * A single cool-gray material, lit from the upper left, like the reference.
  * Scope every rule to the design axis so the original flat themes stay intact.
+ * Controls use two surfaces: a shallow rim or a raised, level face.
  * Color and material tokens live in colors.js for both light and dark modes.
  */
 [data-design='neumorphism'] {
   --soft-raised: 9px 9px 20px var(--soft-shadow), -9px -9px 20px var(--soft-light);
   --soft-small: 4px 4px 9px var(--soft-shadow), -4px -4px 9px var(--soft-light);
-  --soft-inset: inset 4px 4px 8px var(--soft-shadow), inset -4px -4px 8px var(--soft-light);
-  --soft-face: linear-gradient(135deg, oklch(var(--bc) / 0.015), var(--soft-edge));
+  --soft-rimmed: inset 1px 1px 0 var(--soft-edge), inset -1px -1px 0 oklch(var(--bc) / 0.06), var(--soft-small);
+  --soft-rim-face: linear-gradient(135deg, oklch(var(--bc) / 0.015), var(--soft-edge));
   background: var(--soft-surface);
 }
 
@@ -33,15 +34,16 @@
   height: 38px;
   border-radius: 12px;
   color: oklch(var(--p));
-  background: var(--soft-face);
-  box-shadow: var(--soft-small);
+  background: var(--soft-rim-face);
+  box-shadow: var(--soft-rimmed);
 }
 [data-design='neumorphism'] .app-nav { flex-wrap: wrap; gap: 8px; }
 [data-design='neumorphism'] .app-header > .flex-1 { flex-wrap: wrap; gap: 12px 0; }
 [data-design='neumorphism'] .app-nav .btn { font-weight: 500; }
-[data-design='neumorphism'] .app-nav [aria-current='page'] {
+[data-design='neumorphism'] .app-nav .btn[aria-current='page'] {
   color: oklch(var(--p));
-  box-shadow: var(--soft-inset);
+  background: var(--soft-surface);
+  box-shadow: var(--soft-small);
 }
 [data-design='neumorphism'] .app-workspace { position: relative; gap: 24px; padding-top: 24px; }
 [data-design='neumorphism'] .app-main {
@@ -62,21 +64,23 @@
 [data-design='neumorphism'] .app-sidebar > .p-3 { padding: 12px 10px 20px; }
 [data-design='neumorphism'] .app-sidebar .btn-primary {
   height: 44px;
-  background: var(--soft-face);
+  background: var(--soft-surface);
   color: oklch(var(--p));
 }
-[data-design='neumorphism'] .app-sidebar .menu { gap: 10px; padding: 8px 4px 16px; }
+/* Row shadows can escape their list items; reserve room inside the scroll clip. */
+[data-design='neumorphism'] .conversation-scroll { padding-inline: 0; scroll-padding-block: 18px; }
+[data-design='neumorphism'] .app-sidebar .conversation-list { flex-wrap: nowrap; gap: 14px; padding: 18px; }
 [data-design='neumorphism'] .conversation-item { padding: 13px 12px; border-radius: 14px; }
-[data-design='neumorphism'] .conversation-item:hover { background: var(--soft-face); box-shadow: var(--soft-small); }
+[data-design='neumorphism'] .conversation-item:hover { background: var(--soft-rim-face); box-shadow: var(--soft-rimmed); }
 [data-design='neumorphism'] .conversation-item.active {
   color: oklch(var(--bc));
-  background: var(--soft-face);
+  background: var(--soft-surface);
   box-shadow: var(--soft-small);
 }
 [data-design='neumorphism'] .conversation-item.active .text-sm { color: oklch(var(--p)); font-weight: 600; }
 [data-design='neumorphism'] .conversation-item:focus-within button { opacity: 1; }
 
-/* Raised objects and inset controls share the same surface color. */
+/* Panels and fields have level faces, with depth supplied by outer shadows. */
 [data-design='neumorphism'] :is(.card, .modal-box, .dropdown-content, .settings-panel, .stats) {
   border: 1px solid var(--soft-edge);
   background: var(--soft-surface);
@@ -87,15 +91,16 @@
 [data-design='neumorphism'] .stat {
   border-radius: 16px;
   background: var(--soft-surface);
-  box-shadow: var(--soft-inset);
+  box-shadow: var(--soft-small);
 }
 [data-design='neumorphism'] .stats .stat { box-shadow: none; }
 [data-design='neumorphism'] :is(.input, .textarea, .select) {
-  border-color: transparent;
-  border-radius: 12px;
+  border-color: var(--soft-edge);
+  border-radius: 8px;
   background-color: var(--soft-surface);
-  box-shadow: var(--soft-inset);
+  box-shadow: var(--soft-small);
 }
+[data-design='neumorphism'] :is(.input, .textarea) { background-image: none; }
 [data-design='neumorphism'] .select { padding-right: 2.2rem; }
 [data-design='neumorphism'] :is(.input, .textarea)::placeholder { color: oklch(var(--bc) / 0.6); }
 [data-design='neumorphism'] :is(.input, .textarea, .select):focus {
@@ -105,20 +110,20 @@
 }
 [data-design='neumorphism'] .btn {
   border: 1px solid var(--soft-edge);
+  border-radius: 8px;
   background-color: var(--soft-surface);
-  background-image: var(--soft-face);
+  background-image: var(--soft-rim-face);
   color: oklch(var(--bc));
   text-transform: none;
-  box-shadow: var(--soft-small);
+  box-shadow: var(--soft-rimmed);
   transition: box-shadow 160ms, color 160ms, background-color 160ms;
 }
-[data-design='neumorphism'] .btn:hover { box-shadow: 2px 2px 5px var(--soft-shadow), -2px -2px 5px var(--soft-light); }
-[data-design='neumorphism'] .btn:active { transform: none; background-image: none; box-shadow: var(--soft-inset); }
+[data-design='neumorphism'] .btn:hover { border-color: oklch(var(--p) / 0.25); }
+[data-design='neumorphism'] .btn:active { transform: none; background-image: none; box-shadow: var(--soft-small); }
 [data-design='neumorphism'] .btn:focus-visible { outline: 2px solid oklch(var(--p)); outline-offset: 3px; }
-[data-design='neumorphism'] .btn-circle { border-radius: 50%; }
-[data-design='neumorphism'] :is(.btn-primary, .btn-edit-send) { background-color: oklch(var(--p)); color: oklch(var(--pc)); border-color: oklch(var(--p) / 0.2); background-image: none; }
+[data-design='neumorphism'] :is(.btn-primary, .btn-edit-send) { background-color: oklch(var(--p)); color: oklch(var(--pc)); border-color: oklch(var(--p) / 0.2); background-image: none; box-shadow: var(--soft-small); }
 [data-design='neumorphism'] .btn-secondary { color: oklch(var(--s)); }
-[data-design='neumorphism'] .btn-error { background-color: oklch(var(--er)); color: oklch(var(--erc)); background-image: none; border-color: transparent; }
+[data-design='neumorphism'] .btn-error { background-color: oklch(var(--er)); color: oklch(var(--erc)); background-image: none; border-color: transparent; box-shadow: var(--soft-small); }
 [data-design='neumorphism'] .btn-error.btn-outline { background-color: var(--soft-surface); color: oklch(var(--er)); }
 [data-design='neumorphism'] .btn-success { color: oklch(var(--su)); }
 [data-design='neumorphism'] .btn-warning { color: oklch(var(--wa)); }
@@ -126,22 +131,22 @@
   color: oklch(var(--bc) / 0.4);
   background: var(--soft-surface);
   border-color: transparent;
-  box-shadow: var(--soft-inset);
+  box-shadow: var(--soft-small);
   cursor: not-allowed;
 }
-[data-design='neumorphism'] :is(.checkbox, .radio) { border-color: oklch(var(--bc) / 0.3); box-shadow: inset 2px 2px 4px var(--soft-shadow), inset -2px -2px 4px var(--soft-light); }
+[data-design='neumorphism'] :is(.checkbox, .radio) { border-color: oklch(var(--bc) / 0.3); box-shadow: 1px 1px 3px var(--soft-shadow), -1px -1px 3px var(--soft-light); }
 [data-design='neumorphism'] .toggle { border-color: oklch(var(--bc) / 0.2); }
 [data-design='neumorphism'] :is(.table, fieldset.border) { border-color: oklch(var(--bc) / 0.12); }
 [data-design='neumorphism'] .table :is(th, td) { border-bottom-color: oklch(var(--bc) / 0.09); }
 [data-design='neumorphism'] .table thead { color: oklch(var(--bc) / 0.7); }
 [data-design='neumorphism'] .table-zebra tbody tr:nth-child(even) { background: oklch(var(--bc) / 0.035); }
 [data-design='neumorphism'] .tab-active { color: oklch(var(--p)); }
-[data-design='neumorphism'] .tabs-boxed { background: var(--soft-surface); box-shadow: var(--soft-inset); padding: 6px; gap: 6px; }
+[data-design='neumorphism'] .tabs-boxed { background: var(--soft-rim-face); box-shadow: var(--soft-rimmed); padding: 6px; gap: 6px; }
 [data-design='neumorphism'] .tabs-boxed .tab-active { background: var(--soft-surface); box-shadow: var(--soft-small); }
 [data-design='neumorphism'] .modal-backdrop { background: oklch(var(--bc) / 0.2); backdrop-filter: blur(5px); }
-[data-design='neumorphism'] .avatar > div { box-shadow: var(--soft-inset); }
+[data-design='neumorphism'] .avatar > div { border-radius: 8px; background: var(--soft-surface); box-shadow: var(--soft-small); }
 
-/* Chat: a quiet canvas, sculpted welcome mark, and a recessed composer. */
+/* Chat uses a level input face; the surrounding frame supplies its depth. */
 [data-design='neumorphism'] .chat-messages { padding: 32px clamp(20px, 4vw, 64px); }
 [data-design='neumorphism'] .chat-welcome { padding: 32px 20px; }
 [data-design='neumorphism'] .chat-welcome h2 { font-size: 28px; font-weight: 500; letter-spacing: -0.025em; }
@@ -155,14 +160,14 @@
   border: 1px solid var(--soft-edge);
   border-radius: 26px;
   color: oklch(var(--p) / 0.8);
-  background: var(--soft-face);
+  background: var(--soft-surface);
   box-shadow: var(--soft-raised);
 }
 [data-design='neumorphism'] .chat { padding-block: 12px; }
 [data-design='neumorphism'] .chat-bubble { border-radius: 18px; padding: 16px 20px; }
 [data-design='neumorphism'] .chat-bubble::before { display: none; }
 [data-design='neumorphism'] .chat-bubble-neutral { background: var(--soft-surface); box-shadow: var(--soft-small); }
-[data-design='neumorphism'] .chat-bubble-user { background: oklch(var(--p) / 0.065); box-shadow: var(--soft-inset); }
+[data-design='neumorphism'] .chat-bubble-user { background: oklch(var(--p) / 0.065); box-shadow: var(--soft-small); }
 [data-design='neumorphism'] .chat-header { margin-bottom: 8px; }
 [data-design='neumorphism'] .chat-composer {
   gap: 14px;
@@ -175,7 +180,7 @@
   box-shadow: var(--soft-raised);
 }
 [data-design='neumorphism'] .chat-composer .select-xs { height: 30px; font-size: 11px; }
-[data-design='neumorphism'] .chat-input-well { padding: 12px; border-radius: 16px; border-style: solid; box-shadow: var(--soft-inset); }
+[data-design='neumorphism'] .chat-input-well { padding: 12px; border-radius: 10px; border: 1px solid var(--soft-edge); background: var(--soft-surface); box-shadow: var(--soft-small); }
 [data-design='neumorphism'] .chat-input-well:focus-within { border-color: oklch(var(--p) / 0.35); }
 [data-design='neumorphism'] .chat-input-well .textarea {
   min-width: 0;
@@ -191,10 +196,10 @@
 
 /* Appearance controls demonstrate the material without closing after each choice. */
 [data-design='neumorphism'] .settings-panel { padding: 22px; border-radius: 22px; }
-[data-design='neumorphism'] .theme-choice-card { border-color: transparent; background: var(--soft-surface); box-shadow: var(--soft-small); }
-[data-design='neumorphism'] .theme-choice input:checked + .theme-choice-card { border-color: oklch(var(--p) / 0.55); background: var(--soft-surface); box-shadow: var(--soft-inset); }
-[data-design='neumorphism'] .settings-segmented { background: var(--soft-surface); box-shadow: var(--soft-inset); padding: 6px; }
-[data-design='neumorphism'] input:checked + .settings-segment { background: var(--soft-face); box-shadow: var(--soft-small); }
+[data-design='neumorphism'] .theme-choice-card { border-color: var(--soft-edge); background: var(--soft-rim-face); box-shadow: var(--soft-rimmed); }
+[data-design='neumorphism'] .theme-choice input:checked + .theme-choice-card { border-color: oklch(var(--p) / 0.55); background: var(--soft-surface); box-shadow: var(--soft-small); }
+[data-design='neumorphism'] .settings-segmented { border: 1px solid var(--soft-edge); background: var(--soft-rim-face); box-shadow: var(--soft-rimmed); padding: 6px; }
+[data-design='neumorphism'] input:checked + .settings-segment { background: var(--soft-surface); box-shadow: var(--soft-small); }
 
 @media (max-width: 767px) {
   [data-design='neumorphism'] .app-shell { padding: 12px; }
